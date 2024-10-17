@@ -11,6 +11,10 @@ MAX_WANTED_GOODS = 3
 MIN_WANTED_GOODS = 0
 MAX_SERVICE_TIME = 3
 MIN_SERVICE_TIME = 1
+MAX_DECIDING_TIME = 3
+MIN_DECIDING_TIME = 1
+MIN_REGULAR_RATE = 1
+MAX_REGULAR_RATE = 5
 
 
 menu = [["Cinnamon bun", 0], ["Chocolatechip cookie", 0], ["Blueberry pie", 0]]
@@ -37,17 +41,34 @@ class customer(object):
         self.env = env
         self.order = []
 
-        num_pastries = 0
-        for item in menu: #randomize order
-            wanted_amount = random.randint(MIN_WANTED_GOODS, MAX_WANTED_GOODS)
-            self.order.append([item[0], wanted_amount]) 
-            num_pastries += wanted_amount
-        if num_pastries < 1: #make sure the customer wants at least 1 thing
-            print("Customer wanted NOTHING, forced them to pick something")
-            self.order[random.randint(0,len(menu)-1)][1] = random.randint(1, MAX_WANTED_GOODS)
-
+        regular = random.randint(MIN_REGULAR_RATE, MAX_REGULAR_RATE)
+        if(regular == MIN_REGULAR_RATE):
+            print("A regular arrived")
+            create_customer_order(self)
+        else:
+            self.env.process(self.customer_poder_what_they_want())
         customers_in_queue.append(self)
 
+    def customer_poder_what_they_want(self):
+        yield self.env.timeout(random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME))
+        create_customer_order(self)
+        print("Customer decided what they want at", env.now)
+
+def create_customer_order(customer): 
+    num_pastries = 0
+    for item in menu: #randomize order
+            wanted_amount = random.randint(MIN_WANTED_GOODS, MAX_WANTED_GOODS)
+            customer.order.append([item[0], wanted_amount]) 
+            num_pastries += wanted_amount
+    if num_pastries < 1: #make sure the customer wants at least 1 thing
+        print("Customer wanted NOTHING, forced them to pick something")
+        customer.order[random.randint(0,len(menu)-1)][1] = random.randint(1, MAX_WANTED_GOODS)
+    
+    #debug
+    #for c_index in len(customers_in_queue):
+        #if customers_in_queue[c_index] == customer:
+            #print("Customer", c_index + 1, "wanted", customer.order, "at", env.now)
+    print("Customer wanted", customer.order, "at", env.now)
     
 #def spawn_customer():
 
@@ -55,7 +76,7 @@ def update_menu():
     for i in range(len(menu)):
         menu[i][1] -= customers_in_queue[0].order[i][1]
 
-def detect_unserviceable_customers():
+def detect_unserviceable_customers(): #change so it's a chance that people will change their order if bakery runs out of what they want
     #if nothing the customer wants is in stock, leave
     for customer_index in range(len(customers_in_queue)):
         for pastry in range(len(menu)):
@@ -74,6 +95,19 @@ def remove_unserviceable_customers():
         last_index -= 1
     customers_index_who_wants_to_leave.clear()
 
+def serve_customer():
+    yield env.timeout(random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)) #customer buys pastries
+    print("There are", len(customers_in_queue), "customer left in the queue")
+    #update menu
+    print("Menu before purchase:", menu)
+    update_menu()
+    customers_in_queue.pop(0) #first customer in queue is done, leaving
+    print("Menu after purchase:", menu, "\n")
+
+    detect_unserviceable_customers()
+    remove_unserviceable_customers()
+
+
     
 def main(env):
     bakery = Bakery(env)
@@ -88,19 +122,19 @@ def main(env):
     print("\n")
 
     #simulate
-    while len(customers_in_queue) > 0: #or when event is still going, in case there is temporarely no queue -------------------------------------------------------------
-        yield env.timeout(random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)) #customer buys pastries
-        
-        print("There are", len(customers_in_queue), "customer left in the queue")
-        #update menu
-        print("Menu before purchase:", menu)
-        update_menu()
-        customers_in_queue.pop(0) #first customer in queue is done, leaving
-        print("Menu after purchase:", menu, "\n")
+    while True: #while simulation is running...
+        #for c in customers_in_queue: #let customers decide when they enter, should not effect other customers before them ready to order
+            #if(c.order == []):
+                #yield c.env.timeout(random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME))
+                #create_customer_order(c)
 
-        detect_unserviceable_customers()
-        remove_unserviceable_customers()
+        if len(customers_in_queue) > 0:
+            with bakery.cashier.request() as request:
+                yield request
 
+                print(env.now, ": Hello, I'd like to order...")
+                yield env.process(serve_customer())
+                print(f'Customer leaves at {env.now:.2f}.')
 
 env = simpy.Environment()
 env.process(main(env)) #insert start function here
