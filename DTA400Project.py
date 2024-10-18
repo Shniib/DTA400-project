@@ -11,14 +11,15 @@ MAX_WANTED_GOODS = 3
 MIN_WANTED_GOODS = 0
 MAX_SERVICE_TIME = 3
 MIN_SERVICE_TIME = 1
-MAX_DECIDING_TIME = 3
-MIN_DECIDING_TIME = 1
+MAX_DECIDING_TIME = 4
+MIN_DECIDING_TIME = 2
 MIN_REGULAR_RATE = 1
 MAX_REGULAR_RATE = 5
 
 
 menu = [["Cinnamon bun", 0], ["Chocolatechip cookie", 0], ["Blueberry pie", 0]]
 customers_in_queue = []
+customers_browsing = []
 customers_index_who_wants_to_leave = []
 
 #customers_in_total = 0
@@ -40,18 +41,25 @@ class customer(object):
     def __init__(self, env):
         self.env = env
         self.order = []
+        self.ready_time = 0
 
         regular = random.randint(MIN_REGULAR_RATE, MAX_REGULAR_RATE)
         if(regular == MIN_REGULAR_RATE):
             print("A regular arrived")
             create_customer_order(self)
+            customers_in_queue.append(self)
         else:
             self.env.process(self.customer_poder_what_they_want())
-        customers_in_queue.append(self)
+        
 
     def customer_poder_what_they_want(self):
-        yield self.env.timeout(random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME))
+        decision_making_time = random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)
+        self.ready_time = env.now
+        yield self.env.timeout(decision_making_time) #why have time out if we need to stop it from acting in the bakery manually anyways?
         create_customer_order(self)
+        self.ready_time = self.ready_time + decision_making_time
+        print(f'Customers self.ready_time is {self.ready_time}')
+        customers_in_queue.append(self)
         print("Customer decided what they want at", env.now)
 
 def create_customer_order(customer): 
@@ -96,13 +104,15 @@ def remove_unserviceable_customers():
     customers_index_who_wants_to_leave.clear()
 
 def serve_customer():
+    print(f'Menu at {env.now}: {menu}')
     yield env.timeout(random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)) #customer buys pastries
     print("There are", len(customers_in_queue), "customer left in the queue")
     #update menu
-    print("Menu before purchase:", menu)
+    
     update_menu()
     customers_in_queue.pop(0) #first customer in queue is done, leaving
-    print("Menu after purchase:", menu, "\n")
+    print(f'Menu at {env.now}: {menu}')
+
 
     detect_unserviceable_customers()
     remove_unserviceable_customers()
