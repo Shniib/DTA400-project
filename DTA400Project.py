@@ -11,8 +11,8 @@ MAX_WANTED_GOODS = 3
 MIN_WANTED_GOODS = 0
 MAX_SERVICE_TIME = 3
 MIN_SERVICE_TIME = 1
-MAX_DECIDING_TIME = 4
-MIN_DECIDING_TIME = 2
+MAX_DECIDING_TIME = 10
+MIN_DECIDING_TIME = 6
 MIN_REGULAR_RATE = 1
 MAX_REGULAR_RATE = 5
 
@@ -53,12 +53,12 @@ class customer(object):
         
 
     def customer_poder_what_they_want(self):
-        decision_making_time = random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)
-        self.ready_time = env.now
-        yield self.env.timeout(decision_making_time) #why have time out if we need to stop it from acting in the bakery manually anyways?
+        #decision_making_time = 
+        #self.ready_time = env.now
+        yield self.env.timeout(random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)) #why have time out if we need to stop it from acting in the bakery manually anyways?
         create_customer_order(self)
-        self.ready_time = self.ready_time + decision_making_time
-        print(f'Customers self.ready_time is {self.ready_time}')
+        #self.ready_time = self.ready_time + decision_making_time
+        #print(f'Customers self.ready_time is {self.ready_time}')
         customers_in_queue.append(self)
         print("Customer decided what they want at", env.now)
 
@@ -111,7 +111,7 @@ def serve_customer():
     
     update_menu()
     customers_in_queue.pop(0) #first customer in queue is done, leaving
-    print(f'Menu at {env.now}: {menu}')
+    #print(f'Menu at {env.now}: {menu}')
 
 
     detect_unserviceable_customers()
