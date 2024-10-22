@@ -111,7 +111,7 @@ def serve_customer():
     
     update_menu()
     customers_in_queue.pop(0) #first customer in queue is done, leaving
-    print(f'Menu at {env.now}: {menu}')
+    #print(f'Menu at {env.now}: {menu}')
 
 
     detect_unserviceable_customers()
