@@ -1,7 +1,7 @@
 import simpy
-import random
+import random #Next: add customers to queue over sim time
 
-SIMULATION_TIME = 10
+SIMULATION_TIME = 5
 NUM_CASHIERS = 1
 MAX_INITIAL_CUSTOMERS = 5
 MIN_INITIAL_CUSTOMERS = 2
@@ -25,7 +25,6 @@ customers_index_who_wants_to_leave = []
 #customers_in_total = 0
 #customers_unserviceable = 0
 
-
 class Bakery(object):
     def __init__(self, env):
         self.env = env
@@ -37,7 +36,7 @@ class Bakery(object):
         print("Bakery baked", menu)
         self.daily_batch = menu # remove if we cannot make an "exit function" when the simulation ends
 
-class customer(object):
+class customer(object): #never do timeout in __init__!
     def __init__(self, env):
         self.env = env
         self.order = []
@@ -49,18 +48,25 @@ class customer(object):
             create_customer_order(self)
             customers_in_queue.append(self)
         else:
-            self.env.process(self.customer_poder_what_they_want())
-        
+            print("not a regular has arrived")
+            customers_browsing.append(self)
 
-    def customer_poder_what_they_want(self):
-        #decision_making_time = 
-        #self.ready_time = env.now
-        yield self.env.timeout(random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)) #why have time out if we need to stop it from acting in the bakery manually anyways?
-        create_customer_order(self)
-        #self.ready_time = self.ready_time + decision_making_time
-        #print(f'Customers self.ready_time is {self.ready_time}')
-        customers_in_queue.append(self)
-        print("Customer decided what they want at", env.now)
+
+def customer_decides_what_they_want(customer): #customers might get called here multiple times???
+    #decision_making_time = 
+    #self.ready_time = env.now
+    #yield customer.env.timeout(random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)) #why have time out if we need to stop it from acting in the bakery manually anyways?
+    create_customer_order(customer)
+    #self.ready_time = self.ready_time + decision_making_time
+    #print(f'Customers self.ready_time is {self.ready_time}')
+    for customer_index in range(len(customers_browsing)): 
+        if customers_browsing[customer_index] is customer:
+            print("I left the thinking queue")
+            customers_browsing.pop(customer_index)
+            break
+    customers_in_queue.append(customer)
+    print(f'Customer decided they want {customer.order} at time {env.now}')
+
 
 def create_customer_order(customer): 
     num_pastries = 0
@@ -111,11 +117,11 @@ def serve_customer():
     
     update_menu()
     customers_in_queue.pop(0) #first customer in queue is done, leaving
-    #print(f'Menu at {env.now}: {menu}')
+    print(f'Menu at {env.now}: {menu}')
 
 
-    detect_unserviceable_customers()
-    remove_unserviceable_customers()
+    #detect_unserviceable_customers()
+    #remove_unserviceable_customers()
 
 
     
@@ -137,6 +143,9 @@ def main(env):
             #if(c.order == []):
                 #yield c.env.timeout(random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME))
                 #create_customer_order(c)
+        if len(customers_browsing) > 0:
+            for cus in customers_browsing:
+                customer_decides_what_they_want(cus)
 
         if len(customers_in_queue) > 0:
             with bakery.cashier.request() as request:
