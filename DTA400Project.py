@@ -48,13 +48,6 @@ class customer(object): #never do timeout in __init__!
         else:
             print(f'    Random customer {self.customer_number} arrived at {env.now}')
 
-
-def customer_decides_what_they_want(c, env):
-    deciding_time = random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)
-    yield env.timeout(deciding_time) #why have time out if we need to stop it from acting in the bakery manually anyways?
-    create_customer_order(c)
-    print(f'    Customer {c.customer_number} took {deciding_time} time to decide they want {c.order} (done at time {env.now})')
-
 def create_customer_order(customer): 
     num_pastries = 0
     for item in menu: #randomize order
@@ -88,28 +81,16 @@ def remove_unserviceable_customers():
         last_index -= 1
     customers_index_who_wants_to_leave.clear()
 
-def serve_customer(c):
-    service_time = random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)
-    print(f'Service time for customer {c.customer_number}: {service_time}.')
-    yield env.timeout(service_time) #customer buys pastries
-    print(f'Menu at {env.now}: {menu}')
-    update_menu(c)
-    print(f'Menu at {env.now}: {menu}')
-
-    #detect_unserviceable_customers()
-    #remove_unserviceable_customers()
-
 
 def customer_behavior(env, c, cashier):
+    #decide what you want
     if len(c.order) == 0:
-        #customer_decides_what_they_want(c, env)
         deciding_time = random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)
-        yield env.timeout(deciding_time) #why have time out if we need to stop it from acting in the bakery manually anyways?
+        yield env.timeout(deciding_time)
         create_customer_order(c)
         print(f'    Customer {c.customer_number} took {deciding_time} time to decide they want {c.order} (done at time {env.now})')
         
-    
-    #serve_customer(c)
+    #pay
     with cashier.request() as request:
         yield request
         print(f'\n{env.now}: Hello, I would like to order...')
@@ -117,9 +98,10 @@ def customer_behavior(env, c, cashier):
 
         print(f'Service time for customer {c.customer_number}: {service_time}.')
         yield env.timeout(service_time) #customer buys pastries
-        print(f'Menu at {env.now}: {menu}')
+        print(f'Menu before {env.now}: {menu}')
+        print(f'Customer want {c.order}')
         update_menu(c)
-        print(f'Menu at {env.now}: {menu}')
+        print(f'Menu after {env.now}: {menu}')
 
 def main(env):
     bakery = Bakery(env)
