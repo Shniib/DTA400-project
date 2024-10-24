@@ -5,6 +5,8 @@ SIMULATION_TIME = 10
 NUM_CASHIERS = 1
 MAX_INITIAL_CUSTOMERS = 5
 MIN_INITIAL_CUSTOMERS = 2
+MAX_TIME_BETWEEN_CUSTOMERS = 3
+MIN_TIME_BETWEEN_CUSTOMERS = 1
 MAX_BAKED_GOODS = 10
 MIN_BAKED_GOODS = 5
 MAX_WANTED_GOODS = 3
@@ -44,12 +46,13 @@ class customer(object): #never do timeout in __init__!
 
         regular = random.randint(MIN_REGULAR_RATE, MAX_REGULAR_RATE)
         if(regular == MIN_REGULAR_RATE):
-            print("A regular arrived")
+            print(" A regular arrived")
             create_customer_order(self)
-            customers_in_queue.append(self)
+            #customers_in_queue.append(self)
         else:
-            print("not a regular has arrived")
-            customers_browsing.append(self)
+            print(" not a regular has arrived")
+            #customers_browsing.append(self)
+
 
 
 def customer_decides_what_they_want(customer, env): #customers might get called here multiple times???
@@ -61,11 +64,12 @@ def customer_decides_what_they_want(customer, env): #customers might get called 
     create_customer_order(customer)
     #self.ready_time = self.ready_time + decision_making_time
     #print(f'Customers self.ready_time is {self.ready_time}')
-    for customer_index in range(len(customers_browsing)): 
+
+    """for customer_index in range(len(customers_browsing)): 
         if customers_browsing[customer_index] is customer:
             customers_browsing.pop(customer_index)
             break
-    customers_in_queue.append(customer)
+    customers_in_queue.append(customer)"""
     print(f'Customer decided they want {customer.order} at time {env.now}')
 
 
@@ -76,7 +80,7 @@ def create_customer_order(customer):
             customer.order.append([item[0], wanted_amount]) 
             num_pastries += wanted_amount
     if num_pastries < 1: #make sure the customer wants at least 1 thing
-        print("Customer wanted NOTHING, forced them to pick something")
+        print(" Customer wanted NOTHING, forced them to pick something")
         customer.order[random.randint(0,len(menu)-1)][1] = random.randint(1, MAX_WANTED_GOODS)
     
     #debug
@@ -87,9 +91,9 @@ def create_customer_order(customer):
     
 #def spawn_customer():
 
-def update_menu():
+def update_menu(c):
     for i in range(len(menu)):
-        menu[i][1] -= customers_in_queue[0].order[i][1]
+        menu[i][1] -= c.order[i][1]
 
 def detect_unserviceable_customers(): #change so it's a chance that people will change their order if bakery runs out of what they want
     #if nothing the customer wants is in stock, leave
@@ -110,20 +114,49 @@ def remove_unserviceable_customers():
         last_index -= 1
     customers_index_who_wants_to_leave.clear()
 
-def serve_customer():
+def serve_customer(c):
     service_time = random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)
     print(f'Service time: {service_time}. Menu at {env.now}: {menu}')
     yield env.timeout(service_time) #customer buys pastries
-    print("There are", len(customers_in_queue), "customer left in the queue")
+    #print("There are", len(customers_in_queue), "customer left in the queue")
     #update menu
     
-    update_menu()
-    customers_in_queue.pop(0) #first customer in queue is done, leaving
+    update_menu(c)
+    #customers_in_queue.pop(0) #first customer in queue is done, leaving
     print(f'Menu at {env.now}: {menu}')
 
 
     #detect_unserviceable_customers()
     #remove_unserviceable_customers()
+
+
+def customer_behavior(env, c, cashier):
+    if len(c.order) == 0:
+        #customer_decides_what_they_want(c, env)
+        deciding_time = random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)
+        print(f'    Deciding time: {deciding_time}')
+        yield env.timeout(deciding_time) #why have time out if we need to stop it from acting in the bakery manually anyways?
+        create_customer_order(c)
+        print(f'    Customer decided they want {c.order} at time {env.now}')
+    
+    #serve_customer(c)
+    with cashier.request() as request:
+        yield request
+
+        print(env.now, ": Hello, I'd like to order...")
+        #yield env.process(serve_customer())
+        service_time = random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)
+        print(f'Menu: {menu} Service time for this customer: {service_time}')
+        yield env.timeout(service_time) #customer buys pastries
+        #print(f'Customer is done ordering at {env.now}')
+        print(f'Customer leaves at {env.now}.')
+    
+    #print("There are", len(customers_in_queue), "customer left in the queue")
+    #update menu
+    
+    update_menu(c)
+    #customers_in_queue.pop(0) #first customer in queue is done, leaving
+    print(f'Menu at {env.now}: {menu}')
 
 
 def main(env):
@@ -132,6 +165,7 @@ def main(env):
     #customers arriving when bakery opens
     for i in range(random.randint(MIN_INITIAL_CUSTOMERS, MAX_INITIAL_CUSTOMERS)):
         newCustomer = customer(env)
+        env.process(customer_behavior(env, newCustomer,  bakery.cashier))
     
     #debug: what the customers want (in order)
     for customer_index in range(len(customers_in_queue)):
@@ -139,7 +173,12 @@ def main(env):
     print("\n")
 
     #simulate
-    while True: #while simulation is running...
+    while True:
+        customer_arrival_time = random.randint(MIN_TIME_BETWEEN_CUSTOMERS,MAX_TIME_BETWEEN_CUSTOMERS)  # Slumpad ankomsttid för nästa kund
+        yield env.timeout(customer_arrival_time)
+        newCustomer = customer(env)
+        env.process(customer_behavior(env, newCustomer, bakery.cashier)) 
+    """while True: #while simulation is running...
         # serve the ones in queue
         while len(customers_in_queue) > 0: # handle the first customer only?
             with bakery.cashier.request() as request:
@@ -153,7 +192,7 @@ def main(env):
             for cus in customers_browsing:
                 # makes the sim freeze
                 #customer_decides_what_they_want(cus, env) 
-                yield env.process(customer_decides_what_they_want(cus, env)) 
+                yield env.process(customer_decides_what_they_want(cus, env)) """
 
         
         #env.timeout(1)
