@@ -43,10 +43,10 @@ class customer(object): #never do timeout in __init__!
 
         regular = random.randint(MIN_REGULAR_RATE, MAX_REGULAR_RATE)
         if(regular == MIN_REGULAR_RATE):
-            print(f'    A regular arrived at {env.now}')
+            print(f'    A regular arrived at time {env.now}')
             create_customer_order(self)
         else:
-            print(f'    not a regular has arrived {env.now}')
+            print(f'    not a regular has arrived at time {env.now}')
 
 
 def customer_decides_what_they_want(c, env):
@@ -113,11 +113,11 @@ def customer_behavior(env, c, cashier):
     #serve_customer(c)
     with cashier.request() as request:
         yield request
-        print(env.now, ": Hello, I'd like to order...")
+        print(f'\n{env.now}: Hello, I would like to order...')
         service_time = random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)
         print(f'Menu: {menu} Service time for this customer: {service_time}')
         yield env.timeout(service_time) #customer buys pastries
-        print(f'Customer leaves at {env.now}.')
+        print(f'Customer leaves at {env.now}.\n')
     
     update_menu(c)
     print(f'Menu at {env.now}: {menu}')
