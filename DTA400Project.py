@@ -1,7 +1,7 @@
 import simpy
 import random #Next: add customers to queue over sim time
 
-SIMULATION_TIME = 5
+SIMULATION_TIME = 10
 NUM_CASHIERS = 1
 MAX_INITIAL_CUSTOMERS = 5
 MIN_INITIAL_CUSTOMERS = 2
@@ -55,13 +55,14 @@ class customer(object): #never do timeout in __init__!
 def customer_decides_what_they_want(customer, env): #customers might get called here multiple times???
     #decision_making_time = 
     #self.ready_time = env.now
-    yield env.timeout(random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)) #why have time out if we need to stop it from acting in the bakery manually anyways?
+    deciding_time = random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)
+    print(f'Deciding time: {deciding_time}')
+    yield env.timeout(deciding_time) #why have time out if we need to stop it from acting in the bakery manually anyways?
     create_customer_order(customer)
     #self.ready_time = self.ready_time + decision_making_time
     #print(f'Customers self.ready_time is {self.ready_time}')
     for customer_index in range(len(customers_browsing)): 
         if customers_browsing[customer_index] is customer:
-            print("I left the thinking queue")
             customers_browsing.pop(customer_index)
             break
     customers_in_queue.append(customer)
@@ -82,7 +83,7 @@ def create_customer_order(customer):
     #for c_index in len(customers_in_queue):
         #if customers_in_queue[c_index] == customer:
             #print("Customer", c_index + 1, "wanted", customer.order, "at", env.now)
-    print("Customer wanted", customer.order, "at", env.now)
+    #print("Customer wanted", customer.order, "at", env.now)
     
 #def spawn_customer():
 
@@ -110,8 +111,9 @@ def remove_unserviceable_customers():
     customers_index_who_wants_to_leave.clear()
 
 def serve_customer():
-    print(f'Menu at {env.now}: {menu}')
-    yield env.timeout(random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)) #customer buys pastries
+    service_time = random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)
+    print(f'Service time: {service_time}. Menu at {env.now}: {menu}')
+    yield env.timeout(service_time) #customer buys pastries
     print("There are", len(customers_in_queue), "customer left in the queue")
     #update menu
     
@@ -124,7 +126,6 @@ def serve_customer():
     #remove_unserviceable_customers()
 
 
-    
 def main(env):
     bakery = Bakery(env)
     
@@ -140,7 +141,7 @@ def main(env):
     #simulate
     while True: #while simulation is running...
         # serve the ones in queue
-        while len(customers_in_queue) > 0:
+        while len(customers_in_queue) > 0: # handle the first customer only?
             with bakery.cashier.request() as request:
                 yield request
 
