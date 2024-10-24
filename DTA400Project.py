@@ -36,25 +36,24 @@ class Bakery(object):
         self.daily_batch = menu # remove if we cannot make an "exit function" when the simulation ends
 
 class customer(object): #never do timeout in __init__!
-    def __init__(self, env):
+    def __init__(self, env, i):
         self.env = env
         self.order = []
-        self.ready_time = 0
+        self.customer_number = i
 
         regular = random.randint(MIN_REGULAR_RATE, MAX_REGULAR_RATE)
         if(regular == MIN_REGULAR_RATE):
-            print(f'    A regular arrived at time {env.now}')
+            print(f'    Regular customer {self.customer_number} arrived at {env.now}')
             create_customer_order(self)
         else:
-            print(f'    not a regular has arrived at time {env.now}')
+            print(f'    Random customer {self.customer_number} arrived at {env.now}')
 
 
 def customer_decides_what_they_want(c, env):
     deciding_time = random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)
-    print(f'    Deciding time: {deciding_time}')
     yield env.timeout(deciding_time) #why have time out if we need to stop it from acting in the bakery manually anyways?
     create_customer_order(c)
-    print(f'    Customer decided they want {c.order} at time {env.now}')
+    print(f'    Customer {c.customer_number} took {deciding_time} time to decide they want {c.order} (done at time {env.now})')
 
 def create_customer_order(customer): 
     num_pastries = 0
@@ -63,7 +62,7 @@ def create_customer_order(customer):
             customer.order.append([item[0], wanted_amount]) 
             num_pastries += wanted_amount
     if num_pastries < 1: #make sure the customer wants at least 1 thing
-        print(" Customer wanted NOTHING, forced them to pick something")
+        #print(" Customer wanted NOTHING, forced them to pick something")
         customer.order[random.randint(0,len(menu)-1)][1] = random.randint(1, MAX_WANTED_GOODS)
 
 def update_menu(c):
@@ -91,8 +90,9 @@ def remove_unserviceable_customers():
 
 def serve_customer(c):
     service_time = random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)
-    print(f'Service time: {service_time}. Menu at {env.now}: {menu}')
+    print(f'Service time for customer {c.customer_number}: {service_time}.')
     yield env.timeout(service_time) #customer buys pastries
+    print(f'Menu at {env.now}: {menu}')
     update_menu(c)
     print(f'Menu at {env.now}: {menu}')
 
@@ -104,10 +104,9 @@ def customer_behavior(env, c, cashier):
     if len(c.order) == 0:
         #customer_decides_what_they_want(c, env)
         deciding_time = random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)
-        print(f'    Deciding time: {deciding_time}')
         yield env.timeout(deciding_time) #why have time out if we need to stop it from acting in the bakery manually anyways?
         create_customer_order(c)
-        print(f'    Customer decided they want {c.order} at time {env.now}')
+        print(f'    Customer {c.customer_number} took {deciding_time} time to decide they want {c.order} (done at time {env.now})')
         
     
     #serve_customer(c)
@@ -115,27 +114,28 @@ def customer_behavior(env, c, cashier):
         yield request
         print(f'\n{env.now}: Hello, I would like to order...')
         service_time = random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)
-        print(f'Menu: {menu} Service time for this customer: {service_time}')
-        yield env.timeout(service_time) #customer buys pastries
-        print(f'Customer leaves at {env.now}.\n')
-    
-    update_menu(c)
-    print(f'Menu at {env.now}: {menu}')
 
+        print(f'Service time for customer {c.customer_number}: {service_time}.')
+        yield env.timeout(service_time) #customer buys pastries
+        print(f'Menu at {env.now}: {menu}')
+        update_menu(c)
+        print(f'Menu at {env.now}: {menu}')
 
 def main(env):
     bakery = Bakery(env)
-    
+    customer_nb = 1
     #customers arriving when bakery opens
     for i in range(random.randint(MIN_INITIAL_CUSTOMERS, MAX_INITIAL_CUSTOMERS)):
-        newCustomer = customer(env)
+        newCustomer = customer(env, customer_nb)
+        customer_nb += 1
         env.process(customer_behavior(env, newCustomer,  bakery.cashier))
 
     #simulate
     while True:
         customer_arrival_time = random.randint(MIN_TIME_BETWEEN_CUSTOMERS,MAX_TIME_BETWEEN_CUSTOMERS)
         yield env.timeout(customer_arrival_time)
-        newCustomer = customer(env)
+        newCustomer = customer(env, customer_nb)
+        customer_nb += 1
         env.process(customer_behavior(env, newCustomer, bakery.cashier)) 
 
 env = simpy.Environment()
