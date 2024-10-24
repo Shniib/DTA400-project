@@ -11,8 +11,8 @@ MAX_WANTED_GOODS = 3
 MIN_WANTED_GOODS = 0
 MAX_SERVICE_TIME = 3
 MIN_SERVICE_TIME = 1
-MAX_DECIDING_TIME = 10
-MIN_DECIDING_TIME = 6
+MAX_DECIDING_TIME = 3
+MIN_DECIDING_TIME = 1
 MIN_REGULAR_RATE = 1
 MAX_REGULAR_RATE = 5
 
@@ -52,10 +52,10 @@ class customer(object): #never do timeout in __init__!
             customers_browsing.append(self)
 
 
-def customer_decides_what_they_want(customer): #customers might get called here multiple times???
+def customer_decides_what_they_want(customer, env): #customers might get called here multiple times???
     #decision_making_time = 
     #self.ready_time = env.now
-    #yield customer.env.timeout(random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)) #why have time out if we need to stop it from acting in the bakery manually anyways?
+    yield env.timeout(random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)) #why have time out if we need to stop it from acting in the bakery manually anyways?
     create_customer_order(customer)
     #self.ready_time = self.ready_time + decision_making_time
     #print(f'Customers self.ready_time is {self.ready_time}')
@@ -139,15 +139,8 @@ def main(env):
 
     #simulate
     while True: #while simulation is running...
-        #for c in customers_in_queue: #let customers decide when they enter, should not effect other customers before them ready to order
-            #if(c.order == []):
-                #yield c.env.timeout(random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME))
-                #create_customer_order(c)
-        if len(customers_browsing) > 0:
-            for cus in customers_browsing:
-                customer_decides_what_they_want(cus)
-
-        if len(customers_in_queue) > 0:
+        # serve the ones in queue
+        while len(customers_in_queue) > 0:
             with bakery.cashier.request() as request:
                 yield request
 
@@ -155,6 +148,15 @@ def main(env):
                 yield env.process(serve_customer())
                 print(f'Customer leaves at {env.now:.2f}.')
 
+        if len(customers_browsing) > 0:
+            for cus in customers_browsing:
+                # makes the sim freeze
+                #customer_decides_what_they_want(cus, env) 
+                yield env.process(customer_decides_what_they_want(cus, env)) 
+
+        
+        #env.timeout(1)
+
 env = simpy.Environment()
 env.process(main(env)) #insert start function here
-env.run(until=SIMULATION_TIME)  #end when either time over or every part of menu is <= 0
+env.run(until=SIMULATION_TIME) 
