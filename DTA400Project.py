@@ -1,14 +1,14 @@
 import simpy
 import random
 
-SIMULATION_TIME = 10
+SIMULATION_TIME = 60 #1 unit = 1 minute. Only set times dividable by 60
 NUM_CASHIERS = 1
 MAX_INITIAL_CUSTOMERS = 5
 MIN_INITIAL_CUSTOMERS = 2
 MAX_TIME_BETWEEN_CUSTOMERS = 3
 MIN_TIME_BETWEEN_CUSTOMERS = 1
-MAX_BAKED_GOODS = 10
-MIN_BAKED_GOODS = 5
+MAX_BAKED_GOODS = SIMULATION_TIME * 0.8
+MIN_BAKED_GOODS = SIMULATION_TIME * 0.5
 MAX_WANTED_GOODS = 3
 MIN_WANTED_GOODS = 0
 MAX_SERVICE_TIME = 3
@@ -18,10 +18,14 @@ MIN_DECIDING_TIME = 1
 MIN_REGULAR_RATE = 1
 MAX_REGULAR_RATE = 5
 
-menu = [["Cinnamon bun", 0], ["Chocolatechip cookie", 0], ["Blueberry pie", 0]]
+customers_in_queue = []
 
-#customers_in_total = 0
-#customers_unserviceable = 0
+#Metrics
+menu = [["Cinnamon bun", 0], ["Chocolatechip cookie", 0], ["Blueberry pie", 0]]
+data = [["Customers in total", 0], ["Customers served", 0], ["Customer unserviceable", 0]]
+queue_length = []
+arriving_times_between_customers = [] 
+
 
 class Bakery(object):
     def __init__(self, env):
@@ -32,7 +36,9 @@ class Bakery(object):
         for item in menu:
             item[1] = random.randint(MIN_BAKED_GOODS, MAX_BAKED_GOODS)
         print("Bakery baked", menu)
-        self.daily_batch = menu # remove if we cannot make an "exit function" when the simulation ends
+        self.daily_batch = [["Cinnamon bun", 0], ["Chocolatechip cookie", 0], ["Blueberry pie", 0]]
+        for pastry in range(len(menu)):
+            self.daily_batch[pastry][1] = menu[pastry][1]
 
 class customer(object): #never do timeout in __init__!
     def __init__(self, env, i):
@@ -46,6 +52,7 @@ class customer(object): #never do timeout in __init__!
             create_customer_order(self)
         else:
             print(f'    Random customer {self.customer_number} arrived at {env.now}')
+        data[0][1] = data[0][1] + 1 #add to total customers
 
 def create_customer_order(customer): 
     num_pastries = 0
@@ -57,6 +64,7 @@ def create_customer_order(customer):
     #make sure the customer wants at least 1 thing
     if num_pastries < 1: 
         customer.order[random.randint(0,len(menu)-1)][1] = random.randint(1, MAX_WANTED_GOODS)
+    customers_in_queue.append(customer)
 
 def update_menu(c):
     for i in range(len(menu)):
@@ -98,18 +106,35 @@ def customer_behavior(env, c, cashier):
         print(f'Service time for customer {c.customer_number}: {service_time}.')
         yield env.timeout(service_time) #customer buys pastries
         print(f'Menu before {env.now}: {menu}')
-        print(f'Customer want {c.order}')
+        print(f'Customer {c.customer_number} want {c.order}')
         update_menu(c)
         print(f'Menu after {env.now}: {menu}')
+        #remove myself from queue
+        for customer_index in range(len(customers_in_queue)):
+            if customers_in_queue[customer_index] == c:
+                customers_in_queue.pop(customer_index)
+                break
+        
+        # if customer could buy something they wanted: add +1 to customers served
+        for pastry_index in range(len(menu)):
+            if c.order[pastry_index][1] > 0: #if I wanted this pastry
+                if menu[pastry_index][1] > 0: #if it is available, add me to customers served
+                    data[1][1] = data[1][1] + 1
+                    break
+            if pastry_index == len(menu) - 1: #if I am unserviceable, add it to data
+                data[2][1] = data[2][1] + 1
+        
 
 def create_customer(cashier, nb):
     newCustomer = customer(env, nb)
     env.process(customer_behavior(env, newCustomer,  cashier))
-    return nb + 1
+    return (nb + 1)
 
 def main(env):
     bakery = Bakery(env)
     customer_nb = 1
+    env.process(exit_function(bakery))
+    env.process(gather_data())
     #customers arriving when bakery opens
     for i in range(random.randint(MIN_INITIAL_CUSTOMERS, MAX_INITIAL_CUSTOMERS)):
         customer_nb = create_customer(bakery.cashier, customer_nb)
@@ -119,6 +144,34 @@ def main(env):
         customer_arrival_time = random.randint(MIN_TIME_BETWEEN_CUSTOMERS,MAX_TIME_BETWEEN_CUSTOMERS)
         yield env.timeout(customer_arrival_time)
         customer_nb = create_customer(bakery.cashier, customer_nb)
+        
+def gather_data():
+    while True:
+        #print(env.now)
+        queue_length.append(len(customers_in_queue))#faktiska längen på kön
+        yield env.timeout(1)
+
+def exit_function(b):
+    yield env.timeout(SIMULATION_TIME - 0.00001) #has to be under simulation time or it will not trigger
+
+    arrival_rate = data[0][1] / (SIMULATION_TIME / 60) #total customers / (simulation time divided into hours)
+    service_rate = data[1][1] / (SIMULATION_TIME / 60) #total served customers / (simulation time divided into hours)
+
+    average_queue_length = arrival_rate / (service_rate * (service_rate - arrival_rate))
+
+    print("\nThe bakery closed for today")
+    print(f'Customers in total: {data[0][1]}')
+    print(f'Customers served: {data[1][1]}')
+    print(f'Customer unserviceable: {data[2][1]}')
+    print(f'Menu at the beginning of the day:   {b.daily_batch}')
+    print(f'Menu at the end of the day:         {menu}')
+    print(f'Arrival rate (Average customers per hour): {arrival_rate:.0f}')
+    print(f'Service rate (Average served customers per hour): {service_rate:.0f}')
+
+
+    print(f'Right formula queue length: {average_queue_length}')
+
+    print(f'All recorded queue lengths: {queue_length}')
 
 env = simpy.Environment()
 env.process(main(env)) #start function
