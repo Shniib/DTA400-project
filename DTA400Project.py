@@ -1,10 +1,10 @@
 import simpy
 import random
 
-SIMULATION_TIME = 60 #1 unit = 1 minute. Only set times dividable by 60
+SIMULATION_TIME = 120 #1 unit = 1 minute. Only set times dividable by 60
 NUM_CASHIERS = 1
-MAX_INITIAL_CUSTOMERS = 5
-MIN_INITIAL_CUSTOMERS = 2
+MAX_INITIAL_CUSTOMERS = 3
+MIN_INITIAL_CUSTOMERS = 1
 MAX_TIME_BETWEEN_CUSTOMERS = 3
 MIN_TIME_BETWEEN_CUSTOMERS = 1
 MAX_BAKED_GOODS = SIMULATION_TIME * 0.8
@@ -23,6 +23,8 @@ customers_in_queue = []
 #Metrics
 menu = [["Cinnamon bun", 0], ["Chocolatechip cookie", 0], ["Blueberry pie", 0]]
 data = [["Customers in total", 0], ["Customers served", 0], ["Customer unserviceable", 0]]
+arrival_rates = [] 
+service_rates = []
 queue_length = []
 arriving_times_between_customers = [] 
 
@@ -70,25 +72,6 @@ def update_menu(c):
     for i in range(len(menu)):
         menu[i][1] -= c.order[i][1]
 
-"""def detect_unserviceable_customers(): #change so it's a chance that people will change their order if bakery runs out of what they want
-    #if nothing the customer wants is in stock, leave
-    for customer_index in range(len(customers_in_queue)):
-        for pastry in range(len(menu)):
-            if customers_in_queue[customer_index].order[pastry][1] > 0: # if we even want this pastry...
-                if menu[pastry][1] > 0: #if the pastry is in stock, break and move on to the next customer check
-                    break
-            if pastry == len(menu) - 1: #if we are checking the last pastry and there is still nothing in the bakery the customer wants: prepare to leave
-                print("Customer wants",customers_in_queue[customer_index].order, "\nbut bakery only has", menu, ". Customer leaves.\n")
-                update_menu()
-                customers_index_who_wants_to_leave.append(customer_index)
-
-def remove_unserviceable_customers():
-    last_index = len(customers_index_who_wants_to_leave) - 1 #start from the back so the index cannot end up too big
-    for sad_customer in range(len(customers_index_who_wants_to_leave)):
-        customers_in_queue.pop(customers_index_who_wants_to_leave[last_index])
-        last_index -= 1
-    customers_index_who_wants_to_leave.clear()"""
-
 def customer_behavior(env, c, cashier):
     #decide what you want
     if len(c.order) == 0:
@@ -105,6 +88,7 @@ def customer_behavior(env, c, cashier):
 
         print(f'Service time for customer {c.customer_number}: {service_time}.')
         yield env.timeout(service_time) #customer buys pastries
+        service_rates.append(service_time)
         print(f'Menu before {env.now}: {menu}')
         print(f'Customer {c.customer_number} want {c.order}')
         update_menu(c)
@@ -138,11 +122,13 @@ def main(env):
     #customers arriving when bakery opens
     for i in range(random.randint(MIN_INITIAL_CUSTOMERS, MAX_INITIAL_CUSTOMERS)):
         customer_nb = create_customer(bakery.cashier, customer_nb)
+        arrival_rates.append(0)
 
     #simulation
     while True:
         customer_arrival_time = random.randint(MIN_TIME_BETWEEN_CUSTOMERS,MAX_TIME_BETWEEN_CUSTOMERS)
         yield env.timeout(customer_arrival_time)
+        arrival_rates.append(customer_arrival_time)
         customer_nb = create_customer(bakery.cashier, customer_nb)
         
 def gather_data():
@@ -151,27 +137,56 @@ def gather_data():
         queue_length.append(len(customers_in_queue))#faktiska längen på kön
         yield env.timeout(1)
 
+def count_sum(list):
+    time_sum = 0 # make func
+    for time in list:
+        time_sum = time_sum + time
+    return time_sum
+
 def exit_function(b):
     yield env.timeout(SIMULATION_TIME - 0.00001) #has to be under simulation time or it will not trigger
 
-    arrival_rate = data[0][1] / (SIMULATION_TIME / 60) #total customers / (simulation time divided into hours)
-    service_rate = data[1][1] / (SIMULATION_TIME / 60) #total served customers / (simulation time divided into hours)
+    total_customers = data[0][1]
+    customers_served = data[1][1]
+    customers_unserviceable = data[2][1]
 
-    average_queue_length = arrival_rate / (service_rate * (service_rate - arrival_rate))
+    arrival_time_sum = count_sum(arrival_rates)
+    service_time_sum = count_sum(service_rates)
+
+    arrival_rate_per_min = 1 / (arrival_time_sum / total_customers)
+    arrival_rate_per_hour = arrival_rate_per_min * 60
+
+    service_rate_per_min = 1 / (service_time_sum / (customers_served + customers_unserviceable))
+    service_rate_per_hour = service_rate_per_min * 60
+
+    #arrival rate > service rate --> utilization > 1.      arrival rate < service rate --> utilization < 1
+    utilization = arrival_rate_per_hour / service_rate_per_hour
+    # PROBLEM: utilization kan inte alltid vara över 1 då den ibland står och väntar. 
+    # tid den väntar = SIMULATION_TIME - SUM_SERVICE_TIME
+    cashier_idle_time = SIMULATION_TIME - service_time_sum
+    cashier_idle_time_per_hour = cashier_idle_time / (SIMULATION_TIME / 60)
+
+    average_wait_time = arrival_rate_per_min / (service_rate_per_min * (service_rate_per_min - arrival_rate_per_min))
+    average_queue_length = (arrival_rate_per_min * arrival_rate_per_min) / (service_rate_per_min * (service_rate_per_min - arrival_rate_per_min))
 
     print("\nThe bakery closed for today")
-    print(f'Customers in total: {data[0][1]}')
-    print(f'Customers served: {data[1][1]}')
-    print(f'Customer unserviceable: {data[2][1]}')
+    print(f'Customers in total: {total_customers}')
+    print(f'Customers served: {customers_served}')
+    print(f'Customer unserviceable: {customers_unserviceable}')
     print(f'Menu at the beginning of the day:   {b.daily_batch}')
     print(f'Menu at the end of the day:         {menu}')
-    print(f'Arrival rate (Average customers per hour): {arrival_rate:.0f}')
-    print(f'Service rate (Average served customers per hour): {service_rate:.0f}')
+    print(f'\nArrival rate (Average customers per hour): {arrival_rate_per_hour:.0f} ') # ~0-2 kunder för mycket
+    print(f'Arrival rate (Average customers per min): {arrival_rate_per_min:.2f}')
+    print(f'Service rate (Average customers per hour): {service_rate_per_hour:.0f} ') # ~0-6 kunder för mycket. För att service rate och arrival rate har samma cooldown (1-3) har de liknande rates 
+    print(f'Service rate (Average customers per min): {service_rate_per_min:.2f}') # och ibland "slösas tid" då folk inte är redo att beställa
+    print(f'Utilization = {utilization:.2f}')
+    print(f'Average wait time (W): {average_wait_time}')
+    print(f'Average queue legnth (L): {average_queue_length}')
+    print(f'Total cashier idle time: {cashier_idle_time}')
+    print(f'Cashier ide tile per hour: {cashier_idle_time_per_hour}')
 
-
-    print(f'Right formula queue length: {average_queue_length}')
-
-    print(f'All recorded queue lengths: {queue_length}')
+    print(f'\narrival_rates: {arrival_rates} (Length: {len(arrival_rates)})')
+    print(f'service_rates: {service_rates} (Length: {len(service_rates)})\n')
 
 env = simpy.Environment()
 env.process(main(env)) #start function
