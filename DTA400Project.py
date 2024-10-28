@@ -1,7 +1,7 @@
 import simpy
 import random
 
-SIMULATION_TIME = 120 #1 unit = 1 minute. Only set times dividable by 60
+SIMULATION_TIME = 60 #1 unit = 1 minute. Only set times dividable by 60
 NUM_CASHIERS = 1
 MAX_INITIAL_CUSTOMERS = 3
 MIN_INITIAL_CUSTOMERS = 1
@@ -23,7 +23,8 @@ customers_in_queue = []
 #Metrics
 menu = [["Cinnamon bun", 0], ["Chocolatechip cookie", 0], ["Blueberry pie", 0]]
 data = [["Customers in total", 0], ["Customers served", 0], ["Customer unserviceable", 0]]
-arrival_rates = [] 
+arrival_rates_to_bakery = [] 
+arrival_rates_to_queue = [] 
 service_rates = []
 queue_length = []
 arriving_times_between_customers = [] 
@@ -79,7 +80,10 @@ def customer_behavior(env, c, cashier):
         yield env.timeout(deciding_time)
         create_customer_order(c)
         print(f'    Customer {c.customer_number} took {deciding_time} time to decide they want {c.order} (done at time {env.now})')
-        
+        arrival_rates_to_queue.append(deciding_time)
+    else:
+        arrival_rates_to_queue.append(0) #regulars go directly to queue
+    
     #pay
     with cashier.request() as request:
         yield request
@@ -122,13 +126,13 @@ def main(env):
     #customers arriving when bakery opens
     for i in range(random.randint(MIN_INITIAL_CUSTOMERS, MAX_INITIAL_CUSTOMERS)):
         customer_nb = create_customer(bakery.cashier, customer_nb)
-        arrival_rates.append(0)
+        arrival_rates_to_bakery.append(0)
 
     #simulation
     while True:
         customer_arrival_time = random.randint(MIN_TIME_BETWEEN_CUSTOMERS,MAX_TIME_BETWEEN_CUSTOMERS)
         yield env.timeout(customer_arrival_time)
-        arrival_rates.append(customer_arrival_time)
+        arrival_rates_to_bakery.append(customer_arrival_time)
         customer_nb = create_customer(bakery.cashier, customer_nb)
         
 def gather_data():
@@ -150,24 +154,31 @@ def exit_function(b):
     customers_served = data[1][1]
     customers_unserviceable = data[2][1]
 
-    arrival_time_sum = count_sum(arrival_rates)
+    #arrival_time_to_bakery_sum = count_sum(arrival_rates_to_bakery) #ska vara när de kommer in i kön, inte bageriet. System = kö och service
+    arrival_time_to_queue_sum = count_sum(arrival_rates_to_queue)
     service_time_sum = count_sum(service_rates)
 
-    arrival_rate_per_min = 1 / (arrival_time_sum / total_customers)
-    arrival_rate_per_hour = arrival_rate_per_min * 60
-
+    #Arrival rate
+    #arrival_rate_to_bakery_per_min = 1 / (arrival_time_to_bakery_sum / total_customers)
+    #arrival_rate_to_bakery_per_hour = arrival_rate_to_bakery_per_min * 60
+    #Service rate
     service_rate_per_min = 1 / (service_time_sum / (customers_served + customers_unserviceable))
     service_rate_per_hour = service_rate_per_min * 60
 
+    arrival_rate_to_queue_per_min = 1 / (arrival_time_to_queue_sum / len(arrival_rates_to_queue))
+    arrival_rate_to_queue_per_hour = arrival_rate_to_queue_per_min * 60
+
     #arrival rate > service rate --> utilization > 1.      arrival rate < service rate --> utilization < 1
-    utilization = arrival_rate_per_hour / service_rate_per_hour
+    utilization = arrival_rate_to_queue_per_hour / service_rate_per_hour
     # PROBLEM: utilization kan inte alltid vara över 1 då den ibland står och väntar. 
-    # tid den väntar = SIMULATION_TIME - SUM_SERVICE_TIME
+
     cashier_idle_time = SIMULATION_TIME - service_time_sum
     cashier_idle_time_per_hour = cashier_idle_time / (SIMULATION_TIME / 60)
 
-    average_wait_time = arrival_rate_per_min / (service_rate_per_min * (service_rate_per_min - arrival_rate_per_min))
-    average_queue_length = (arrival_rate_per_min * arrival_rate_per_min) / (service_rate_per_min * (service_rate_per_min - arrival_rate_per_min))
+    average_wait_time_min = arrival_rate_to_queue_per_min / (service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min))
+    average_queue_length_min = (arrival_rate_to_queue_per_min * arrival_rate_to_queue_per_min) / (service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min))
+
+    #average_queue_length_hour = (arrival_rate_to_bakery_per_hour * arrival_rate_to_bakery_per_hour) / (service_rate_per_hour * (service_rate_per_hour - arrival_rate_to_bakery_per_hour))
 
     print("\nThe bakery closed for today")
     print(f'Customers in total: {total_customers}')
@@ -175,18 +186,23 @@ def exit_function(b):
     print(f'Customer unserviceable: {customers_unserviceable}')
     print(f'Menu at the beginning of the day:   {b.daily_batch}')
     print(f'Menu at the end of the day:         {menu}')
-    print(f'\nArrival rate (Average customers per hour): {arrival_rate_per_hour:.0f} ') # ~0-2 kunder för mycket
-    print(f'Arrival rate (Average customers per min): {arrival_rate_per_min:.2f}')
+
+    #print(f'\nArrival rate to bakery (Average customers per hour): {arrival_rate_to_bakery_per_hour:.0f} ') # ~0-2 kunder för mycket
+    print(f'Arrival rate to queue (Average customers per min): {arrival_rate_to_queue_per_min:.2f}')
+    print(f'Arrival rate to queue (Average customers per hour): {arrival_rate_to_queue_per_hour:.2f}')
     print(f'Service rate (Average customers per hour): {service_rate_per_hour:.0f} ') # ~0-6 kunder för mycket. För att service rate och arrival rate har samma cooldown (1-3) har de liknande rates 
     print(f'Service rate (Average customers per min): {service_rate_per_min:.2f}') # och ibland "slösas tid" då folk inte är redo att beställa
     print(f'Utilization = {utilization:.2f}')
-    print(f'Average wait time (W): {average_wait_time}')
-    print(f'Average queue legnth (L): {average_queue_length}')
-    print(f'Total cashier idle time: {cashier_idle_time}')
-    print(f'Cashier ide tile per hour: {cashier_idle_time_per_hour}')
 
-    print(f'\narrival_rates: {arrival_rates} (Length: {len(arrival_rates)})')
+    print(f'\nAverage wait time (W) in minutes: {average_wait_time_min:.2f}')
+    print(f'Average queue length (L): {average_queue_length_min:.2f}')
+    print(f'Total cashier idle time: {cashier_idle_time} min')
+    print(f'Cashier idle time per hour: {cashier_idle_time_per_hour} min')
+
+    print(f'\narrival_rate between customers entering the bakery: {arrival_rates_to_bakery} (Length: {len(arrival_rates_to_bakery)})')
+    print(f'\narrival_rate between customers entering the queue: {arrival_rates_to_queue} (Length: {len(arrival_rates_to_queue)})')
     print(f'service_rates: {service_rates} (Length: {len(service_rates)})\n')
+
 
 env = simpy.Environment()
 env.process(main(env)) #start function
