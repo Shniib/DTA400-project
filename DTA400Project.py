@@ -1,7 +1,7 @@
 import simpy
 import random
 
-SIMULATION_TIME = 60 #1 unit = 1 minute. Only set times dividable by 60
+SIMULATION_TIME = 60 #1 unit = 1 minute.
 NUM_CASHIERS = 1
 MAX_INITIAL_CUSTOMERS = 3
 MIN_INITIAL_CUSTOMERS = 1
@@ -63,7 +63,6 @@ def create_customer_order(customer):
     if num_pastries < 1: 
         customer.order[random.randint(0,len(menu)-1)][1] = random.randint(1, MAX_WANTED_GOODS)
     
-
 def update_menu(c):
     for i in range(len(menu)):
         menu[i][1] -= c.order[i][1]
@@ -101,7 +100,6 @@ def customer_behavior(env, c, cashier):
             if pastry_index == len(menu) - 1: #if I am unserviceable, add it to data
                 data[2][1] = data[2][1] + 1
         
-
 def create_customer(cashier, nb):
     newCustomer = customer(env, nb)
     env.process(customer_behavior(env, newCustomer,  cashier))
@@ -167,7 +165,6 @@ def exit_function(b):
     utilization = arrival_rate_to_queue_per_hour / service_rate_per_hour #usual formula
     #else:
         #utilization = (SIMULATION_TIME - cashier_idle_time) / SIMULATION_TIME
-
     
     average_wait_time_min = arrival_rate_to_queue_per_min / (service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min))
     average_queue_length_min = (arrival_rate_to_queue_per_min * arrival_rate_to_queue_per_min) / (service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min))
