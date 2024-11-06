@@ -179,13 +179,6 @@ def main(env):
         customer_number = create_customer(bakery.cashier, customer_number)
 
 
-def count_sum(time_list: list[int]):
-    time_sum = 0  # make func
-    for time in time_list:
-        time_sum = time_sum + time
-    return time_sum
-
-
 def time_to_interval_calculation(time_list: list[float]):
     interval_list: list[float] = []
     sum = 0
@@ -211,7 +204,7 @@ def exit_function(bakery: Bakery):
     arrival_interval_to_queue_sum, interval_times = time_to_interval_calculation(
         arrival_times_to_queue
     )
-    service_time_sum = count_sum(service_rates)
+    service_time_sum = sum(service_rates)
     logger.log(
         INFO,
         f"\narrival_interval_to_queue_sum: {arrival_interval_to_queue_sum}, arrival_interval_to_queue_sum/len: {arrival_interval_to_queue_sum/len(arrival_times_to_queue):.2f}",
