@@ -183,9 +183,10 @@ def exit_function(b):
     )
     service_time_sum = count_sum(service_rates)
     print(
-        f"\narrival_interval_to_queue_sum: {arrival_interval_to_queue_sum}, arrival_interval_to_queue_sum/len: {arrival_interval_to_queue_sum/len(arrival_times_to_queue):.2f}"
+        f"\narrival_interval_to_queue_sum: {arrival_interval_to_queue_sum}, arrival_interval_to_queue_sum/len: {arrival_interval_to_queue_sum/len(arrival_times_to_queue):.2f}",
+        f"statistics.median(interval_times) = {statistics.median(interval_times)}",
+        sep="\n",
     )
-    print(f"statistics.median(interval_times) = {statistics.median(interval_times)}")
 
     cashier_idle_time = SIMULATION_TIME - service_time_sum
     cashier_idle_time_per_hour = cashier_idle_time / (SIMULATION_TIME / 60)
@@ -209,47 +210,28 @@ def exit_function(b):
         arrival_rate_to_queue_per_min * arrival_rate_to_queue_per_min
     ) / (service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min))
 
-    print("\nThe bakery closed for today")
-    print(f"Customers in total: {total_customers}")
-    print(f"Customers served: {customers_served}")
-    print(f"Customer unserviceable: {customers_unserviceable}")
-    print(f"Menu at the beginning of the day:   {b.daily_batch}")
-    print(f"Menu at the end of the day:         {menu}")
-
     print(
-        f"Arrival rate to queue (Average customers per hour): {arrival_rate_to_queue_per_hour:.2f}"
-    )
-    print(
-        f"Arrival rate to queue (Average customers per min): {arrival_rate_to_queue_per_min:.2f}"
-    )
-    print(
-        f"Service rate (Average customers per hour): {service_rate_per_hour:.0f} "
-    )  # ~0-6 kunder för mycket. För att service rate och arrival rate har samma cooldown (1-3) har de liknande rates
-    print(
-        f"Service rate (Average customers per min): {service_rate_per_min:.2f}"
-    )  # och ibland "slösas tid" då folk inte är redo att beställa
-    print(f"Utilization = {utilization:.2f}")
-
-    print(f"\nAverage wait time (W) in minutes: {average_wait_time_min:.2f}")
-    print(f"Average queue length (L): {average_queue_length_min:.2f}")
-    print(f"Total cashier idle time: {cashier_idle_time} min")
-    print(f"Cashier idle time per hour: {cashier_idle_time_per_hour} min")
-
-    print(
-        f"arrival_time where customers enter the queue:         {arrival_times_to_queue} (Length: {len(arrival_times_to_queue)})"
-    )
-    print(
-        f"intervals between customers entering the queue:       {interval_times} (Length: {len(interval_times)})"
-    )
-    print(
-        f"service_times:                                        {service_rates} (Length: {len(service_rates)})\n"
-    )
-
-    print(
-        f"(service_rate_per_hour - arrival_rate_to_queue_per_hour) is {(service_rate_per_hour - arrival_rate_to_queue_per_hour)}"
-    )
-    print(
-        f"(service_rate_per_min - arrival_rate_to_queue_per_min) is {(service_rate_per_min - arrival_rate_to_queue_per_min)}"
+        "\nThe bakery closed for today",
+        f"Customers in total: {total_customers}",
+        f"Customers served: {customers_served}",
+        f"Customer unserviceable: {customers_unserviceable}",
+        f"Menu at the beginning of the day:   {b.daily_batch}",
+        f"Menu at the end of the day:         {menu}",
+        f"Arrival rate to queue (Average customers per hour): {arrival_rate_to_queue_per_hour:.2f}",
+        f"Arrival rate to queue (Average customers per min): {arrival_rate_to_queue_per_min:.2f}",
+        f"Service rate (Average customers per hour): {service_rate_per_hour:.0f} ",  # ~0-6 kunder för mycket. För att service rate och arrival rate har samma cooldown (1-3) har de liknande rates
+        f"Service rate (Average customers per min): {service_rate_per_min:.2f}",  # och ibland "slösas tid" då folk inte är redo att beställa
+        f"Utilization = {utilization:.2f}",
+        f"\nAverage wait time (W) in minutes: {average_wait_time_min:.2f}",
+        f"Average queue length (L): {average_queue_length_min:.2f}",
+        f"Total cashier idle time: {cashier_idle_time} min",
+        f"Cashier idle time per hour: {cashier_idle_time_per_hour} min",
+        f"arrival_time where customers enter the queue:         {arrival_times_to_queue} (Length: {len(arrival_times_to_queue)})",
+        f"intervals between customers entering the queue:       {interval_times} (Length: {len(interval_times)})",
+        f"service_times:                                        {service_rates} (Length: {len(service_rates)})\n",
+        f"(service_rate_per_hour - arrival_rate_to_queue_per_hour) is {(service_rate_per_hour - arrival_rate_to_queue_per_hour)}",
+        f"(service_rate_per_min - arrival_rate_to_queue_per_min) is {(service_rate_per_min - arrival_rate_to_queue_per_min)}",
+        sep="\n",
     )
 
 
