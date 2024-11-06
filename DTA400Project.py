@@ -37,16 +37,16 @@ class Log:
 logger = Log(INFO)
 
 # Saving data
-menu: list[list[str | int]] = [
-    ["Cinnamon bun", 0],
-    ["Chocolatechip cookie", 0],
-    ["Blueberry pie", 0],
+menu: list[tuple[str, int]] = [
+    ("Cinnamon bun", 0),
+    ("Chocolatechip cookie", 0),
+    ("Blueberry pie", 0),
 ]
-data: list[list[str | int]] = [
-    ["Customers in total", 0],
-    ["Customers served", 0],
-    ["Customer unserviceable", 0],
-]
+
+total_customers = 0
+customers_served = 0
+customers_unserviceable = 0
+
 arrival_times_to_queue: list[
     float
 ] = []  # env.now. Calculate time_between_last_customer_and_this_one in exit function, sum them up and get mean.
@@ -60,22 +60,19 @@ class Bakery:
         self.cashier = simpy.Resource(env, NUM_CASHIERS)
         logger.log(DEBUG, NUM_CASHIERS, "works at the front")
         # bake inventory
-        for item in menu:
-            item[1] = random.randint(MIN_BAKED_GOODS, MAX_BAKED_GOODS)
+        for index, (name, quantity) in enumerate(menu):
+            menu[index] = name, random.randint(MIN_BAKED_GOODS, MAX_BAKED_GOODS)
         logger.log(DEBUG, "Bakery baked", menu)
-        self.daily_batch: list[list[str | int]] = [
-            ["Cinnamon bun", 0],
-            ["Chocolatechip cookie", 0],
-            ["Blueberry pie", 0],
-        ]
+        self.daily_batch: list[tuple[str, int]] = []
         for pastry in range(len(menu)):
-            self.daily_batch[pastry][1] = menu[pastry][1]
+            name, quantity = menu[pastry]
+            self.daily_batch.append((name, quantity))
 
 
 class Customer:  # never do timeout in __init__!
     def __init__(self, env: simpy.Environment, i: int):
         self.env = env
-        self.order: list[list[str | int]] = []
+        self.order: list[tuple[str, int]] = []
         self.customer_number = i
 
         regular = random.randint(MIN_REGULAR_RATE, MAX_REGULAR_RATE)
@@ -90,7 +87,8 @@ class Customer:  # never do timeout in __init__!
                 DEBUG,
                 f"    Random customer {self.customer_number} arrived at {env.now}",
             )
-        data[0][1] = data[0][1] + 1  # add to total customers
+        global total_customers
+        total_customers += 1
 
 
 def create_customer_order(customer: Customer):
@@ -98,18 +96,19 @@ def create_customer_order(customer: Customer):
     # randomize order
     for item in menu:
         wanted_amount = random.randint(MIN_WANTED_GOODS, MAX_WANTED_GOODS)
-        customer.order.append([item[0], wanted_amount])
+        customer.order.append((item[0], wanted_amount))
         num_pastries += wanted_amount
     # make sure the customer wants at least 1 thing
     if num_pastries < 1:
-        customer.order[random.randint(0, len(menu) - 1)][1] = random.randint(
-            1, MAX_WANTED_GOODS
-        )
+        index = random.randint(0, len(menu) - 1)
+        name, quantity = customer.order[index]
+        customer.order[index] = name, random.randint(1, MAX_WANTED_GOODS)
 
 
 def update_menu(customer: Customer):
     for i in range(len(menu)):
-        menu[i][1] -= customer.order[i][1]
+        name, quantity = menu[i]
+        menu[i] = name, quantity - customer.order[i][1]
 
 
 def customer_behavior(
@@ -150,10 +149,12 @@ def customer_behavior(
                 if (
                     menu[pastry_index][1] > 0
                 ):  # if it is available, add me to customers served
-                    data[1][1] = data[1][1] + 1
+                    global customers_served
+                    customers_served += 1
                     break
             if pastry_index == len(menu) - 1:  # if I am unserviceable, add it to data
-                data[2][1] = data[2][1] + 1
+                global unserviceable_customers
+                unserviceable_customers += 1
 
 
 def create_customer(cashier: simpy.Resource, customer_number: int) -> int:
@@ -208,10 +209,6 @@ def exit_function(bakery: Bakery):
     yield env.timeout(
         SIMULATION_TIME - 0.00001
     )  # has to be under simulation time or it will not trigger
-
-    total_customers = data[0][1]
-    customers_served = data[1][1]
-    customers_unserviceable = data[2][1]
 
     arrival_interval_to_queue_sum, interval_times = time_to_interval_calculation(
         arrival_times_to_queue
