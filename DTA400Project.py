@@ -180,20 +180,9 @@ def main(env):
 
 
 def time_to_interval_calculation(time_list: list[float]):
-    interval_list: list[float] = []
-    sum = 0
-    for time_index in range(len(time_list)):
-        if (
-            time_index < len(time_list) - 1
-        ):  # as long as we are not on the last time index
-            if time_index == 0:
-                interval = time_list[time_index]  # append the first time
-                interval_list.append(interval)
-                sum = interval
-            interval = time_list[time_index + 1] - time_list[time_index]
-            sum = sum + interval
-            interval_list.append(interval)
-    return sum, interval_list
+    return [
+        time_list[index] - time_list[index - 1] for index in range(1, len(time_list))
+    ]
 
 
 def exit_function(bakery: Bakery):
@@ -201,9 +190,9 @@ def exit_function(bakery: Bakery):
         SIMULATION_TIME - 0.00001
     )  # has to be under simulation time or it will not trigger
 
-    arrival_interval_to_queue_sum, interval_times = time_to_interval_calculation(
-        arrival_times_to_queue
-    )
+    interval_times = time_to_interval_calculation(arrival_times_to_queue)
+    arrival_interval_to_queue_sum = sum(interval_times)
+
     service_time_sum = sum(service_rates)
     logger.log(
         INFO,
