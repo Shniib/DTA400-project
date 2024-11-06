@@ -19,6 +19,23 @@ MIN_DECIDING_TIME = 1
 MIN_REGULAR_RATE = 1
 MAX_REGULAR_RATE = 5
 
+# Log levels
+DEBUG = 2
+TRACE = 1
+INFO = 0
+
+
+class Log:
+    def __init__(self, level: int):
+        self.level = level
+
+    def log(self, level: int, *args, **kwargs):
+        if level <= self.level:
+            print(*args, **kwargs)
+
+
+logger = Log(INFO)
+
 # Saving data
 menu = [["Cinnamon bun", 0], ["Chocolatechip cookie", 0], ["Blueberry pie", 0]]
 data = [
@@ -35,11 +52,11 @@ class Bakery:
     def __init__(self, env):
         self.env = env
         self.cashier = simpy.Resource(env, NUM_CASHIERS)
-        print(NUM_CASHIERS, "works at the front")
+        logger.log(DEBUG, NUM_CASHIERS, "works at the front")
         # bake inventory
         for item in menu:
             item[1] = random.randint(MIN_BAKED_GOODS, MAX_BAKED_GOODS)
-        print("Bakery baked", menu)
+        logger.log(DEBUG, "Bakery baked", menu)
         self.daily_batch = [
             ["Cinnamon bun", 0],
             ["Chocolatechip cookie", 0],
@@ -57,10 +74,16 @@ class Customer:  # never do timeout in __init__!
 
         regular = random.randint(MIN_REGULAR_RATE, MAX_REGULAR_RATE)
         if regular == MIN_REGULAR_RATE:
-            print(f"    Regular customer {self.customer_number} arrived at {env.now}")
+            logger.log(
+                DEBUG,
+                f"    Regular customer {self.customer_number} arrived at {env.now}",
+            )
             create_customer_order(self)
         else:
-            print(f"    Random customer {self.customer_number} arrived at {env.now}")
+            logger.log(
+                DEBUG,
+                f"    Random customer {self.customer_number} arrived at {env.now}",
+            )
         data[0][1] = data[0][1] + 1  # add to total customers
 
 
@@ -89,8 +112,9 @@ def customer_behavior(env, c, cashier):
         deciding_time = random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)
         yield env.timeout(deciding_time)
         create_customer_order(c)
-        print(
-            f"    Customer {c.customer_number} took {deciding_time} time to decide they want {c.order} (done at time {env.now})"
+        logger.log(
+            DEBUG,
+            f"    Customer {c.customer_number} took {deciding_time} time to decide they want {c.order} (done at time {env.now})",
         )
 
     arrival_times_to_queue.append(env.now)
@@ -98,16 +122,18 @@ def customer_behavior(env, c, cashier):
     # pay
     with cashier.request() as request:
         yield request
-        print(f"\n{env.now}: Hello, I would like to order...")
+        logger.log(DEBUG, f"\n{env.now}: Hello, I would like to order...")
         service_time = random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)
 
-        print(f"Service time for customer {c.customer_number}: {service_time}.")
+        logger.log(
+            TRACE, f"Service time for customer {c.customer_number}: {service_time}."
+        )
         yield env.timeout(service_time)  # customer buys pastries
         service_rates.append(service_time)
-        print(f"Menu before {env.now}: {menu}")
-        print(f"Customer {c.customer_number} want {c.order}")
+        logger.log(DEBUG, f"Menu before {env.now}: {menu}")
+        logger.log(DEBUG, f"Customer {c.customer_number} want {c.order}")
         update_menu(c)
-        print(f"Menu after {env.now}: {menu}")
+        logger.log(DEBUG, f"Menu after {env.now}: {menu}")
 
         # if customer could buy something they wanted: add +1 to customers served
         for pastry_index in range(len(menu)):
@@ -182,7 +208,8 @@ def exit_function(b):
         arrival_times_to_queue
     )
     service_time_sum = count_sum(service_rates)
-    print(
+    logger.log(
+        INFO,
         f"\narrival_interval_to_queue_sum: {arrival_interval_to_queue_sum}, arrival_interval_to_queue_sum/len: {arrival_interval_to_queue_sum/len(arrival_times_to_queue):.2f}",
         f"statistics.median(interval_times) = {statistics.median(interval_times)}",
         sep="\n",
@@ -210,7 +237,8 @@ def exit_function(b):
         arrival_rate_to_queue_per_min * arrival_rate_to_queue_per_min
     ) / (service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min))
 
-    print(
+    logger.log(
+        INFO,
         "\nThe bakery closed for today",
         f"Customers in total: {total_customers}",
         f"Customers served: {customers_served}",
