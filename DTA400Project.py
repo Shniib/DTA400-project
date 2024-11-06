@@ -1,19 +1,20 @@
 import simpy
 import random
+import statistics #remove if median is not being used
 
 SIMULATION_TIME = 60 #1 unit = 1 minute.
 NUM_CASHIERS = 1
 MAX_INITIAL_CUSTOMERS = 3
 MIN_INITIAL_CUSTOMERS = 1
-MAX_TIME_BETWEEN_CUSTOMERS = 3
-MIN_TIME_BETWEEN_CUSTOMERS = 1
 MAX_BAKED_GOODS = int(SIMULATION_TIME * 0.8)
 MIN_BAKED_GOODS = int(SIMULATION_TIME * 0.5)
 MAX_WANTED_GOODS = 3
 MIN_WANTED_GOODS = 0
+MAX_TIME_BETWEEN_CUSTOMERS = 4
+MIN_TIME_BETWEEN_CUSTOMERS = 3
 MAX_SERVICE_TIME = 3
 MIN_SERVICE_TIME = 1
-MAX_DECIDING_TIME = 3
+MAX_DECIDING_TIME = 2
 MIN_DECIDING_TIME = 1
 MIN_REGULAR_RATE = 1
 MAX_REGULAR_RATE = 5
@@ -149,6 +150,8 @@ def exit_function(b):
 
     arrival_interval_to_queue_sum, interval_times = time_to_interval_calculation(arrival_times_to_queue)
     service_time_sum = count_sum(service_rates)
+    print(f'\narrival_interval_to_queue_sum: {arrival_interval_to_queue_sum}, arrival_interval_to_queue_sum/len: {arrival_interval_to_queue_sum/len(arrival_times_to_queue):.2f}')
+    print(f'statistics.median(interval_times) = {statistics.median(interval_times)}')
 
     cashier_idle_time = SIMULATION_TIME - service_time_sum
     cashier_idle_time_per_hour = cashier_idle_time / (SIMULATION_TIME / 60)
@@ -160,14 +163,12 @@ def exit_function(b):
     arrival_rate_to_queue_per_hour = arrival_rate_to_queue_per_min * 60
 
     #arrival rate > service rate --> utilization > 1.      arrival rate < service rate --> utilization < 1
-    utilization = 0
-    #if cashier_idle_time == 0: #double check if this is valid after W and L works. (averge might be over 1 anyways if there are long queues)
-    utilization = arrival_rate_to_queue_per_hour / service_rate_per_hour #usual formula
-    #else:
-        #utilization = (SIMULATION_TIME - cashier_idle_time) / SIMULATION_TIME
+    utilization = arrival_rate_to_queue_per_hour / service_rate_per_hour
     
+    #from pp. Does however freak out if the service time interval is too similar to the arrival time interval for customers, or if the utilization >= 1
     average_wait_time_min = arrival_rate_to_queue_per_min / (service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min))
     average_queue_length_min = (arrival_rate_to_queue_per_min * arrival_rate_to_queue_per_min) / (service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min))
+    
 
     print("\nThe bakery closed for today")
     print(f'Customers in total: {total_customers}')
