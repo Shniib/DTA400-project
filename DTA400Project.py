@@ -2,7 +2,7 @@ import simpy
 import random
 import statistics #remove if median is not being used
 
-SIMULATION_TIME = 180 #1 unit = 1 minute.
+SIMULATION_TIME = 60 #1 unit = 1 minute.
 NUM_CASHIERS = 1
 MAX_INITIAL_CUSTOMERS = 3
 MIN_INITIAL_CUSTOMERS = 1
