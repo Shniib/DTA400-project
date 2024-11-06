@@ -37,19 +37,25 @@ class Log:
 logger = Log(INFO)
 
 # Saving data
-menu = [["Cinnamon bun", 0], ["Chocolatechip cookie", 0], ["Blueberry pie", 0]]
-data = [
+menu: list[list[str | int]] = [
+    ["Cinnamon bun", 0],
+    ["Chocolatechip cookie", 0],
+    ["Blueberry pie", 0],
+]
+data: list[list[str | int]] = [
     ["Customers in total", 0],
     ["Customers served", 0],
     ["Customer unserviceable", 0],
 ]
-arrival_times_to_queue = []  # env.now. Calculate time_between_last_customer_and_this_one in exit function, sum them up and get mean.
-service_rates = []
+arrival_times_to_queue: list[
+    float
+] = []  # env.now. Calculate time_between_last_customer_and_this_one in exit function, sum them up and get mean.
+service_rates: list[int] = []
 arriving_times_between_customers = []
 
 
 class Bakery:
-    def __init__(self, env):
+    def __init__(self, env: simpy.Environment):
         self.env = env
         self.cashier = simpy.Resource(env, NUM_CASHIERS)
         logger.log(DEBUG, NUM_CASHIERS, "works at the front")
@@ -57,7 +63,7 @@ class Bakery:
         for item in menu:
             item[1] = random.randint(MIN_BAKED_GOODS, MAX_BAKED_GOODS)
         logger.log(DEBUG, "Bakery baked", menu)
-        self.daily_batch = [
+        self.daily_batch: list[list[str | int]] = [
             ["Cinnamon bun", 0],
             ["Chocolatechip cookie", 0],
             ["Blueberry pie", 0],
@@ -67,9 +73,9 @@ class Bakery:
 
 
 class Customer:  # never do timeout in __init__!
-    def __init__(self, env, i):
+    def __init__(self, env: simpy.Environment, i: int):
         self.env = env
-        self.order = []
+        self.order: list[list[str | int]] = []
         self.customer_number = i
 
         regular = random.randint(MIN_REGULAR_RATE, MAX_REGULAR_RATE)
@@ -87,8 +93,8 @@ class Customer:  # never do timeout in __init__!
         data[0][1] = data[0][1] + 1  # add to total customers
 
 
-def create_customer_order(customer):
-    num_pastries = 0
+def create_customer_order(customer: Customer):
+    num_pastries: int = 0
     # randomize order
     for item in menu:
         wanted_amount = random.randint(MIN_WANTED_GOODS, MAX_WANTED_GOODS)
@@ -101,20 +107,22 @@ def create_customer_order(customer):
         )
 
 
-def update_menu(c):
+def update_menu(customer: Customer):
     for i in range(len(menu)):
-        menu[i][1] -= c.order[i][1]
+        menu[i][1] -= customer.order[i][1]
 
 
-def customer_behavior(env, c, cashier):
+def customer_behavior(
+    env: simpy.Environment, customer: Customer, cashier: simpy.Resource
+):
     # decide what you want
-    if len(c.order) == 0:
+    if len(customer.order) == 0:
         deciding_time = random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)
         yield env.timeout(deciding_time)
-        create_customer_order(c)
+        create_customer_order(customer)
         logger.log(
             DEBUG,
-            f"    Customer {c.customer_number} took {deciding_time} time to decide they want {c.order} (done at time {env.now})",
+            f"    Customer {customer.customer_number} took {deciding_time} time to decide they want {customer.order} (done at time {env.now})",
         )
 
     arrival_times_to_queue.append(env.now)
@@ -126,18 +134,19 @@ def customer_behavior(env, c, cashier):
         service_time = random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)
 
         logger.log(
-            TRACE, f"Service time for customer {c.customer_number}: {service_time}."
+            TRACE,
+            f"Service time for customer {customer.customer_number}: {service_time}.",
         )
         yield env.timeout(service_time)  # customer buys pastries
         service_rates.append(service_time)
         logger.log(DEBUG, f"Menu before {env.now}: {menu}")
-        logger.log(DEBUG, f"Customer {c.customer_number} want {c.order}")
-        update_menu(c)
+        logger.log(DEBUG, f"Customer {customer.customer_number} want {customer.order}")
+        update_menu(customer)
         logger.log(DEBUG, f"Menu after {env.now}: {menu}")
 
         # if customer could buy something they wanted: add +1 to customers served
         for pastry_index in range(len(menu)):
-            if c.order[pastry_index][1] > 0:  # if I wanted this pastry
+            if customer.order[pastry_index][1] > 0:  # if I wanted this pastry
                 if (
                     menu[pastry_index][1] > 0
                 ):  # if it is available, add me to customers served
@@ -147,19 +156,19 @@ def customer_behavior(env, c, cashier):
                 data[2][1] = data[2][1] + 1
 
 
-def create_customer(cashier, nb):
-    newCustomer = Customer(env, nb)
+def create_customer(cashier: simpy.Resource, customer_number: int) -> int:
+    newCustomer = Customer(env, customer_number)
     env.process(customer_behavior(env, newCustomer, cashier))
-    return nb + 1
+    return customer_number + 1
 
 
 def main(env):
     bakery = Bakery(env)
-    customer_nb = 1
+    customer_number: int = 1
     env.process(exit_function(bakery))
     # customers arriving when bakery opens
     for i in range(random.randint(MIN_INITIAL_CUSTOMERS, MAX_INITIAL_CUSTOMERS)):
-        customer_nb = create_customer(bakery.cashier, customer_nb)
+        customer_number = create_customer(bakery.cashier, customer_number)
         # arrival_rates_to_bakery.append(0)
 
     # simulation
@@ -168,18 +177,18 @@ def main(env):
             MIN_TIME_BETWEEN_CUSTOMERS, MAX_TIME_BETWEEN_CUSTOMERS
         )
         yield env.timeout(customer_arrival_time)
-        customer_nb = create_customer(bakery.cashier, customer_nb)
+        customer_number = create_customer(bakery.cashier, customer_number)
 
 
-def count_sum(list):
+def count_sum(time_list: list[int]):
     time_sum = 0  # make func
-    for time in list:
+    for time in time_list:
         time_sum = time_sum + time
     return time_sum
 
 
-def time_to_interval_calculation(time_list):
-    interval_list = []
+def time_to_interval_calculation(time_list: list[float]):
+    interval_list: list[float] = []
     sum = 0
     for time_index in range(len(time_list)):
         if (
@@ -195,7 +204,7 @@ def time_to_interval_calculation(time_list):
     return sum, interval_list
 
 
-def exit_function(b):
+def exit_function(bakery: Bakery):
     yield env.timeout(
         SIMULATION_TIME - 0.00001
     )  # has to be under simulation time or it will not trigger
@@ -243,7 +252,7 @@ def exit_function(b):
         f"Customers in total: {total_customers}",
         f"Customers served: {customers_served}",
         f"Customer unserviceable: {customers_unserviceable}",
-        f"Menu at the beginning of the day:   {b.daily_batch}",
+        f"Menu at the beginning of the day:   {bakery.daily_batch}",
         f"Menu at the end of the day:         {menu}",
         f"Arrival rate to queue (Average customers per hour): {arrival_rate_to_queue_per_hour:.2f}",
         f"Arrival rate to queue (Average customers per min): {arrival_rate_to_queue_per_min:.2f}",
