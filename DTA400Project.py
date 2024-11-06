@@ -192,6 +192,8 @@ def exit_function(b):
     print(f'intervals between customers entering the queue:       {interval_times} (Length: {len(interval_times)})')
     print(f'service_times:                                        {service_rates} (Length: {len(service_rates)})\n')
 
+    print(f'(service_rate_per_hour - arrival_rate_to_queue_per_hour) is {(service_rate_per_hour - arrival_rate_to_queue_per_hour)}')
+    print(f'(service_rate_per_min - arrival_rate_to_queue_per_min) is {(service_rate_per_min - arrival_rate_to_queue_per_min)}')
 env = simpy.Environment()
 env.process(main(env)) #start function
 env.run(until=SIMULATION_TIME)
