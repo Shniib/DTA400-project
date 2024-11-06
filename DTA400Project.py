@@ -81,7 +81,7 @@ class Customer:  # never do timeout in __init__!
                 DEBUG,
                 f"    Regular customer {self.customer_number} arrived at {env.now}",
             )
-            create_customer_order(self)
+            self.create_order()
         else:
             logger.log(
                 DEBUG,
@@ -90,19 +90,63 @@ class Customer:  # never do timeout in __init__!
         global total_customers
         total_customers += 1
 
+    def create_order(self):
+        num_pastries: int = 0
+        # randomize order
+        for item in menu:
+            wanted_amount = random.randint(MIN_WANTED_GOODS, MAX_WANTED_GOODS)
+            self.order.append((item[0], wanted_amount))
+            num_pastries += wanted_amount
+        # make sure the customer wants at least 1 thing
+        if num_pastries < 1:
+            index = random.randint(0, len(menu) - 1)
+            name, quantity = self.order[index]
+            self.order[index] = name, random.randint(1, MAX_WANTED_GOODS)
 
-def create_customer_order(customer: Customer):
-    num_pastries: int = 0
-    # randomize order
-    for item in menu:
-        wanted_amount = random.randint(MIN_WANTED_GOODS, MAX_WANTED_GOODS)
-        customer.order.append((item[0], wanted_amount))
-        num_pastries += wanted_amount
-    # make sure the customer wants at least 1 thing
-    if num_pastries < 1:
-        index = random.randint(0, len(menu) - 1)
-        name, quantity = customer.order[index]
-        customer.order[index] = name, random.randint(1, MAX_WANTED_GOODS)
+    def behavior(self, env: simpy.Environment, cashier: simpy.Resource):
+        # decide what you want
+        if len(self.order) == 0:
+            deciding_time = random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)
+            yield env.timeout(deciding_time)
+            self.create_order()
+            logger.log(
+                DEBUG,
+                f"    Customer {self.customer_number} took {deciding_time} time to decide they want {self.order} (done at time {env.now})",
+            )
+
+        arrival_times_to_queue.append(env.now)
+
+        # pay
+        with cashier.request() as request:
+            yield request
+            logger.log(DEBUG, f"\n{env.now}: Hello, I would like to order...")
+            service_time = random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)
+
+            logger.log(
+                TRACE,
+                f"Service time for customer {self.customer_number}: {service_time}.",
+            )
+            yield env.timeout(service_time)  # customer buys pastries
+            service_rates.append(service_time)
+            logger.log(DEBUG, f"Menu before {env.now}: {menu}")
+            logger.log(DEBUG, f"Customer {self.customer_number} want {self.order}")
+            update_menu(self)
+            logger.log(DEBUG, f"Menu after {env.now}: {menu}")
+
+            # if customer could buy something they wanted: add +1 to customers served
+            for pastry_index in range(len(menu)):
+                if self.order[pastry_index][1] > 0:  # if I wanted this pastry
+                    if (
+                        menu[pastry_index][1] > 0
+                    ):  # if it is available, add me to customers served
+                        global customers_served
+                        customers_served += 1
+                        break
+                if (
+                    pastry_index == len(menu) - 1
+                ):  # if I am unserviceable, add it to data
+                    global customers_unserviceable
+                    customers_unserviceable += 1
 
 
 def update_menu(customer: Customer):
@@ -111,55 +155,9 @@ def update_menu(customer: Customer):
         menu[i] = name, quantity - customer.order[i][1]
 
 
-def customer_behavior(
-    env: simpy.Environment, customer: Customer, cashier: simpy.Resource
-):
-    # decide what you want
-    if len(customer.order) == 0:
-        deciding_time = random.randint(MIN_DECIDING_TIME, MAX_DECIDING_TIME)
-        yield env.timeout(deciding_time)
-        create_customer_order(customer)
-        logger.log(
-            DEBUG,
-            f"    Customer {customer.customer_number} took {deciding_time} time to decide they want {customer.order} (done at time {env.now})",
-        )
-
-    arrival_times_to_queue.append(env.now)
-
-    # pay
-    with cashier.request() as request:
-        yield request
-        logger.log(DEBUG, f"\n{env.now}: Hello, I would like to order...")
-        service_time = random.randint(MIN_SERVICE_TIME, MAX_SERVICE_TIME)
-
-        logger.log(
-            TRACE,
-            f"Service time for customer {customer.customer_number}: {service_time}.",
-        )
-        yield env.timeout(service_time)  # customer buys pastries
-        service_rates.append(service_time)
-        logger.log(DEBUG, f"Menu before {env.now}: {menu}")
-        logger.log(DEBUG, f"Customer {customer.customer_number} want {customer.order}")
-        update_menu(customer)
-        logger.log(DEBUG, f"Menu after {env.now}: {menu}")
-
-        # if customer could buy something they wanted: add +1 to customers served
-        for pastry_index in range(len(menu)):
-            if customer.order[pastry_index][1] > 0:  # if I wanted this pastry
-                if (
-                    menu[pastry_index][1] > 0
-                ):  # if it is available, add me to customers served
-                    global customers_served
-                    customers_served += 1
-                    break
-            if pastry_index == len(menu) - 1:  # if I am unserviceable, add it to data
-                global customers_unserviceable
-                customers_unserviceable += 1
-
-
 def create_customer(cashier: simpy.Resource, customer_number: int) -> int:
     newCustomer = Customer(env, customer_number)
-    env.process(customer_behavior(env, newCustomer, cashier))
+    env.process(newCustomer.behavior(env, cashier))
     return customer_number + 1
 
 
