@@ -31,7 +31,7 @@ service_rates = []
 arriving_times_between_customers = []
 
 
-class Bakery(object):
+class Bakery:
     def __init__(self, env):
         self.env = env
         self.cashier = simpy.Resource(env, NUM_CASHIERS)
@@ -49,7 +49,7 @@ class Bakery(object):
             self.daily_batch[pastry][1] = menu[pastry][1]
 
 
-class customer(object):  # never do timeout in __init__!
+class Customer:  # never do timeout in __init__!
     def __init__(self, env, i):
         self.env = env
         self.order = []
@@ -122,7 +122,7 @@ def customer_behavior(env, c, cashier):
 
 
 def create_customer(cashier, nb):
-    newCustomer = customer(env, nb)
+    newCustomer = Customer(env, nb)
     env.process(customer_behavior(env, newCustomer, cashier))
     return nb + 1
 
