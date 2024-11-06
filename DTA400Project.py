@@ -222,11 +222,11 @@ def exit_function(bakery: Bakery):
     cashier_idle_time = SIMULATION_TIME - service_time_sum
     cashier_idle_time_per_hour = cashier_idle_time / (SIMULATION_TIME / 60)
 
-    service_rate_per_min = 1 / (service_time_sum / len(service_rates))
+    service_rate_per_min = len(service_rates) / service_time_sum
     service_rate_per_hour = service_rate_per_min * 60
 
-    arrival_rate_to_queue_per_min = 1 / (
-        arrival_interval_to_queue_sum / len(arrival_times_to_queue)
+    arrival_rate_to_queue_per_min = (
+        len(arrival_times_to_queue) / arrival_interval_to_queue_sum
     )
     arrival_rate_to_queue_per_hour = arrival_rate_to_queue_per_min * 60
 
