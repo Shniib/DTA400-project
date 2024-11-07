@@ -10,8 +10,8 @@ MAX_BAKED_GOODS = int(SIMULATION_TIME * 0.8)
 MIN_BAKED_GOODS = int(SIMULATION_TIME * 0.5)
 MAX_WANTED_GOODS = 3
 MIN_WANTED_GOODS = 0
-MAX_TIME_BETWEEN_CUSTOMERS = 4
-MIN_TIME_BETWEEN_CUSTOMERS = 3
+MAX_TIME_BETWEEN_CUSTOMERS = 3 # hitta threshold
+MIN_TIME_BETWEEN_CUSTOMERS = 2
 MAX_SERVICE_TIME = 3
 MIN_SERVICE_TIME = 1
 MAX_DECIDING_TIME = 2
@@ -34,7 +34,7 @@ class Log:
             print(*args, **kwargs)
 
 
-logger = Log(INFO)
+logger = Log(INFO)#Change to debug for more info
 
 # Saving data
 menu: list[tuple[str, int]] = [
@@ -223,7 +223,7 @@ def exit_function(bakery: Bakery):
         arrival_rate_to_queue_per_min * arrival_rate_to_queue_per_min
     ) / (service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min))
 
-    logger.log(
+    logger.log( # unstable när utilization > 1 eller om service och arrival rate är för lika eller service rate = 0. Kolla formlerna, diskutera.
         INFO,
         "\nThe bakery closed for today",
         f"Customers in total: {total_customers}",
