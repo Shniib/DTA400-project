@@ -1,31 +1,28 @@
 import simpy
 import random
-import statistics  # remove if median is not being used
 
-SIMULATION_TIME = 60  # 1 unit = 1 minute.
+SIMULATION_TIME = 120  # 1 unit = 1 minute.
 NUM_CASHIERS = 1
 MAX_INITIAL_CUSTOMERS = 3
 MIN_INITIAL_CUSTOMERS = 1
-MAX_BAKED_GOODS = int(SIMULATION_TIME * 0.8)
-MIN_BAKED_GOODS = int(SIMULATION_TIME * 0.5)
-MAX_WANTED_GOODS = 3
-MIN_WANTED_GOODS = 0
-MAX_TIME_BETWEEN_CUSTOMERS = 2 # hitta threshold
-MIN_TIME_BETWEEN_CUSTOMERS = 0
+MAX_TIME_BETWEEN_CUSTOMERS = 5 # hitta threshold
+MIN_TIME_BETWEEN_CUSTOMERS = 3
 MAX_SERVICE_TIME = 3
 MIN_SERVICE_TIME = 1
 MAX_DECIDING_TIME = 2
 MIN_DECIDING_TIME = 1
 MIN_REGULAR_RATE = 1
 MAX_REGULAR_RATE = 5
+MAX_BAKED_GOODS = int(SIMULATION_TIME * (1/MIN_TIME_BETWEEN_CUSTOMERS) * (3/2))
+MIN_BAKED_GOODS = int(SIMULATION_TIME * (1/MIN_TIME_BETWEEN_CUSTOMERS))
+MAX_WANTED_GOODS = 3
+MIN_WANTED_GOODS = 0
+
 
 # Log levels
 DEBUG = 2
 TRACE = 1
 INFO = 0
-
-
-
 
 class Log:
     def __init__(self, level: int):
@@ -198,13 +195,7 @@ def exit_function(bakery: Bakery):
     arrival_interval_to_queue_sum = sum(interval_times)
 
     service_time_sum = sum(service_rates)
-    '''logger.log(
-        INFO,
-        f"\narrival_interval_to_queue_sum: {arrival_interval_to_queue_sum}, arrival_interval_to_queue_sum/len: {arrival_interval_to_queue_sum/len(arrival_times_to_queue):.2f}",
-        f"statistics.median(interval_times) = {statistics.median(interval_times)}",
-        sep="\n",
-    )'''
-
+    
     cashier_idle_time = SIMULATION_TIME - service_time_sum
     cashier_idle_time_per_hour = cashier_idle_time / (SIMULATION_TIME / 60)
 
@@ -254,29 +245,28 @@ def exit_function(bakery: Bakery):
         f"Average queue length (L): {average_queue_length_min:.2f}",
         f"Total cashier idle time: {cashier_idle_time} min",
         f"Cashier idle time per hour: {cashier_idle_time_per_hour} min",
-        f"arrival_time where customers enter the queue:         {arrival_times_to_queue} (Length: {len(arrival_times_to_queue)})",
+        f"Times where a customer entered the queue:         {arrival_times_to_queue} (Length: {len(arrival_times_to_queue)})",
         f"intervals between customers entering the queue:       {interval_times} (Length: {len(interval_times)})",
         f"service_times:                                        {service_rates} (Length: {len(service_rates)})\n",
-        f"(service_rate_per_hour - arrival_rate_to_queue_per_hour) is {(service_rate_per_hour - arrival_rate_to_queue_per_hour)}",
-        f"(service_rate_per_min - arrival_rate_to_queue_per_min) is {(service_rate_per_min - arrival_rate_to_queue_per_min)}",
         sep="\n",
     )'''
 
 def simulation_data(mini, maxi):
+    #set customer arrival interval for the simulation
     global MAX_TIME_BETWEEN_CUSTOMERS, MIN_TIME_BETWEEN_CUSTOMERS
     MAX_TIME_BETWEEN_CUSTOMERS = maxi
     MIN_TIME_BETWEEN_CUSTOMERS = mini
-
+    #run simulation
     global env
     env = simpy.Environment()
     env.process(main(env))
     env.run(until=SIMULATION_TIME)
-    
+    #return average queue length and wait time
     w = average_wait_time_min
     l = average_queue_length_min
     return w, l
     
-
-#env = simpy.Environment()
-#env.process(main(env))  # start function
-#env.run(until=SIMULATION_TIME)
+#Comment these out if you want to try the plot.py file
+env = simpy.Environment()
+env.process(main(env))  # start function
+env.run(until=SIMULATION_TIME)
