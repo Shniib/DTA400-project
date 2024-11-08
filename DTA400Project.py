@@ -5,16 +5,16 @@ SIMULATION_TIME = 120  # 1 unit = 1 minute.
 NUM_CASHIERS = 1
 MAX_INITIAL_CUSTOMERS = 3
 MIN_INITIAL_CUSTOMERS = 1
-MAX_TIME_BETWEEN_CUSTOMERS = 5 # hitta threshold
-MIN_TIME_BETWEEN_CUSTOMERS = 3
+MAX_TIME_BETWEEN_CUSTOMERS = 7 # hitta threshold
+MIN_TIME_BETWEEN_CUSTOMERS = 5
 MAX_SERVICE_TIME = 3
 MIN_SERVICE_TIME = 1
 MAX_DECIDING_TIME = 2
 MIN_DECIDING_TIME = 1
 MIN_REGULAR_RATE = 1
 MAX_REGULAR_RATE = 5
-MAX_BAKED_GOODS = int(SIMULATION_TIME * (1/MIN_TIME_BETWEEN_CUSTOMERS) * (3/2))
-MIN_BAKED_GOODS = int(SIMULATION_TIME * (1/MIN_TIME_BETWEEN_CUSTOMERS))
+MAX_BAKED_GOODS = int(SIMULATION_TIME * (1/MAX_TIME_BETWEEN_CUSTOMERS) * 2)
+MIN_BAKED_GOODS = int(SIMULATION_TIME * (1/MAX_TIME_BETWEEN_CUSTOMERS))
 MAX_WANTED_GOODS = 3
 MIN_WANTED_GOODS = 0
 
@@ -228,7 +228,7 @@ def exit_function(bakery: Bakery):
     except:
         average_queue_length_min = 0
     
-    '''logger.log( # unstable när utilization > 1 eller om service och arrival rate är för lika eller service rate = 0. Kolla formlerna, diskutera.
+    logger.log( # unstable när utilization > 1 eller om service och arrival rate är för lika eller service rate = 0. Kolla formlerna, diskutera.
         INFO,
         "\nThe bakery closed for today",
         f"Customers in total: {total_customers}",
@@ -249,7 +249,7 @@ def exit_function(bakery: Bakery):
         f"intervals between customers entering the queue:       {interval_times} (Length: {len(interval_times)})",
         f"service_times:                                        {service_rates} (Length: {len(service_rates)})\n",
         sep="\n",
-    )'''
+    )
 
 def simulation_data(mini, maxi):
     #set customer arrival interval for the simulation
