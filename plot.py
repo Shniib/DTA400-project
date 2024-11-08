@@ -20,8 +20,6 @@ for boxes in range(10): #x boxes
         # process result
         w = round(w, 2)
         l = round(l, 2)
-        #w = set_bounds(w)
-        #l = set_bounds(l)
         # save result
         temp_w.append(w)
         temp_l.append(l)
