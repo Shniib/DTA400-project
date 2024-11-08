@@ -4,16 +4,8 @@ import importlib
 
 #data = [2, 4, 3, 9, 5, 6, 6, 8 ,4]
 #plt.boxplot(data, vert=True)
-#plt.ylim(1,10)
-
-def set_bounds(variable):
-    bound = 20
-    if variable < (bound * -1):
-        return bound  * -1
-    elif variable > bound:
-        return bound
-    return variable
-
+#
+bound = 20
 w_data = []
 l_data = []
 temp_w = []
@@ -28,8 +20,8 @@ for boxes in range(10): #x boxes
         # process result
         w = round(w, 2)
         l = round(l, 2)
-        w = set_bounds(w)
-        l = set_bounds(l)
+        #w = set_bounds(w)
+        #l = set_bounds(l)
         # save result
         temp_w.append(w)
         temp_l.append(l)
@@ -47,7 +39,7 @@ print(f"W list: {w_data}\n\nL list: {l_data}")
 
 plt.boxplot(w_data, vert=True)
 #plt.boxplot(l_data, vert=True)
-
+plt.ylim((bound * -1),bound)
 plt.show()
 
 
