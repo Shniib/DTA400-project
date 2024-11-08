@@ -10,8 +10,8 @@ MAX_BAKED_GOODS = int(SIMULATION_TIME * 0.8)
 MIN_BAKED_GOODS = int(SIMULATION_TIME * 0.5)
 MAX_WANTED_GOODS = 3
 MIN_WANTED_GOODS = 0
-MAX_TIME_BETWEEN_CUSTOMERS = 5 # hitta threshold
-MIN_TIME_BETWEEN_CUSTOMERS = 3
+MAX_TIME_BETWEEN_CUSTOMERS = 2 # hitta threshold
+MIN_TIME_BETWEEN_CUSTOMERS = 0
 MAX_SERVICE_TIME = 3
 MIN_SERVICE_TIME = 1
 MAX_DECIDING_TIME = 2
@@ -23,6 +23,8 @@ MAX_REGULAR_RATE = 5
 DEBUG = 2
 TRACE = 1
 INFO = 0
+
+
 
 
 class Log:
@@ -162,6 +164,7 @@ def create_customer(cashier: simpy.Resource, customer_number: int) -> int:
 
 
 def main(env):
+      
     bakery = Bakery(env)
     customer_number: int = 1
     env.process(exit_function(bakery))
@@ -169,7 +172,8 @@ def main(env):
     for i in range(random.randint(MIN_INITIAL_CUSTOMERS, MAX_INITIAL_CUSTOMERS)):
         customer_number = create_customer(bakery.cashier, customer_number)
         # arrival_rates_to_bakery.append(0)
-
+    print(f"MAIN: MIN_TIME_BETWEEN_CUSTOMERS: {MIN_TIME_BETWEEN_CUSTOMERS}, MAX_TIME_BETWEEN_CUSTOMERS: {MAX_TIME_BETWEEN_CUSTOMERS}")
+      
     # simulation
     while True:
         customer_arrival_time = random.randint(
@@ -194,12 +198,12 @@ def exit_function(bakery: Bakery):
     arrival_interval_to_queue_sum = sum(interval_times)
 
     service_time_sum = sum(service_rates)
-    logger.log(
+    '''logger.log(
         INFO,
         f"\narrival_interval_to_queue_sum: {arrival_interval_to_queue_sum}, arrival_interval_to_queue_sum/len: {arrival_interval_to_queue_sum/len(arrival_times_to_queue):.2f}",
         f"statistics.median(interval_times) = {statistics.median(interval_times)}",
         sep="\n",
-    )
+    )'''
 
     cashier_idle_time = SIMULATION_TIME - service_time_sum
     cashier_idle_time_per_hour = cashier_idle_time / (SIMULATION_TIME / 60)
@@ -216,14 +220,24 @@ def exit_function(bakery: Bakery):
     utilization = arrival_rate_to_queue_per_hour / service_rate_per_hour
 
     # from pp. Does however freak out if the service time interval is too similar to the arrival time interval for customers, or if the utilization >= 1
-    average_wait_time_min = arrival_rate_to_queue_per_min / (
-        service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min)
-    )
-    average_queue_length_min = (
-        arrival_rate_to_queue_per_min * arrival_rate_to_queue_per_min
-    ) / (service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min))
+    global average_wait_time_min
+    global average_queue_length_min
 
-    logger.log( # unstable när utilization > 1 eller om service och arrival rate är för lika eller service rate = 0. Kolla formlerna, diskutera.
+    try:
+        average_wait_time_min = arrival_rate_to_queue_per_min / (
+            service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min)
+        )
+    except:
+        average_wait_time_min = 0
+
+    try: 
+        average_queue_length_min = (
+            arrival_rate_to_queue_per_min * arrival_rate_to_queue_per_min
+        ) / (service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min))
+    except:
+        average_queue_length_min = 0
+    
+    '''logger.log( # unstable när utilization > 1 eller om service och arrival rate är för lika eller service rate = 0. Kolla formlerna, diskutera.
         INFO,
         "\nThe bakery closed for today",
         f"Customers in total: {total_customers}",
@@ -246,9 +260,23 @@ def exit_function(bakery: Bakery):
         f"(service_rate_per_hour - arrival_rate_to_queue_per_hour) is {(service_rate_per_hour - arrival_rate_to_queue_per_hour)}",
         f"(service_rate_per_min - arrival_rate_to_queue_per_min) is {(service_rate_per_min - arrival_rate_to_queue_per_min)}",
         sep="\n",
-    )
+    )'''
 
+def simulation_data(mini, maxi):
+    global MAX_TIME_BETWEEN_CUSTOMERS, MIN_TIME_BETWEEN_CUSTOMERS
+    MAX_TIME_BETWEEN_CUSTOMERS = maxi
+    MIN_TIME_BETWEEN_CUSTOMERS = mini
 
-env = simpy.Environment()
-env.process(main(env))  # start function
-env.run(until=SIMULATION_TIME)
+    global env
+    env = simpy.Environment()
+    env.process(main(env))
+    env.run(until=SIMULATION_TIME)
+    
+    w = average_wait_time_min
+    l = average_queue_length_min
+    return w, l
+    
+
+#env = simpy.Environment()
+#env.process(main(env))  # start function
+#env.run(until=SIMULATION_TIME)
