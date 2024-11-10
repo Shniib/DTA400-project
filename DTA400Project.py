@@ -5,8 +5,8 @@ SIMULATION_TIME = 480  # 1 unit = 1 minute. 480 = 8 h.
 NUM_CASHIERS = 1
 MAX_INITIAL_CUSTOMERS = 3
 MIN_INITIAL_CUSTOMERS = 1
-MAX_TIME_BETWEEN_CUSTOMERS = 3 # hitta threshold
-MIN_TIME_BETWEEN_CUSTOMERS = 1
+MAX_TIME_BETWEEN_CUSTOMERS = 6 # hitta threshold
+MIN_TIME_BETWEEN_CUSTOMERS = 4
 MAX_SERVICE_TIME = 3
 MIN_SERVICE_TIME = 1
 MAX_DECIDING_TIME = 2
@@ -49,7 +49,7 @@ customers_unserviceable = 0
 arrival_times_to_queue: list[
     float
 ] = []  # env.now. Calculate time_between_last_customer_and_this_one in exit function, sum them up and get mean.
-service_rates: list[int] = []
+service_times: list[int] = []
 arriving_times_between_customers = []
 
 
@@ -126,7 +126,7 @@ class Customer:  # never do timeout in __init__!
                 f"Service time for customer {self.customer_number}: {service_time}.",
             )
             yield env.timeout(service_time)  # customer buys pastries
-            service_rates.append(service_time)
+            service_times.append(service_time)
             logger.log(DEBUG, f"Menu before {env.now}: {menu}")
             logger.log(DEBUG, f"Customer {self.customer_number} want {self.order}")
             update_menu(self)
@@ -191,20 +191,15 @@ def exit_function(bakery: Bakery):
         SIMULATION_TIME - 0.00001
     )  # has to be under simulation time or it will not trigger
 
-    interval_times = time_to_interval_calculation(arrival_times_to_queue)
-    arrival_interval_to_queue_sum = sum(interval_times)
-
-    service_time_sum = sum(service_rates)
+    join_queue_rates = time_to_interval_calculation(arrival_times_to_queue)
     
-    cashier_idle_time = SIMULATION_TIME - service_time_sum
+    cashier_idle_time = SIMULATION_TIME - sum(service_times)
     cashier_idle_time_per_hour = cashier_idle_time / (SIMULATION_TIME / 60)
 
-    service_rate_per_min = len(service_rates) / service_time_sum
+    service_rate_per_min = len(service_times) / sum(service_times)
     service_rate_per_hour = service_rate_per_min * 60
 
-    arrival_rate_to_queue_per_min = (
-        len(arrival_times_to_queue) / arrival_interval_to_queue_sum
-    )
+    arrival_rate_to_queue_per_min = len(join_queue_rates) / sum(join_queue_rates)
     arrival_rate_to_queue_per_hour = arrival_rate_to_queue_per_min * 60
 
     # arrival rate > service rate --> utilization > 1.      arrival rate < service rate --> utilization < 1
@@ -247,8 +242,8 @@ def exit_function(bakery: Bakery):
         f"Total cashier idle time: {cashier_idle_time} min",
         f"Cashier idle time per hour: {cashier_idle_time_per_hour} min",
         f"Times where a customer entered the queue:         {arrival_times_to_queue} (Length: {len(arrival_times_to_queue)})",
-        f"intervals between customers entering the queue:       {interval_times} (Length: {len(interval_times)})",
-        f"service_times:                                        {service_rates} (Length: {len(service_rates)})\n",
+        f"intervals between customers entering the queue:       {join_queue_rates} (Length: {len(join_queue_rates)})",
+        f"service_times:                                        {service_times} (Length: {len(service_times)})\n",
         sep="\n",
     )
 

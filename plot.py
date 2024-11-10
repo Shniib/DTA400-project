@@ -3,7 +3,7 @@ import DTA400Project
 import importlib
 import numpy
 
-utilization_data = True
+utilization_data = False
 box_nb = 8
 
 def make_x_label():
@@ -35,7 +35,7 @@ if utilization_data:
     plt.title("Cashier Utilization")
 
 else:
-    l_plot = True
+    l_plot = False
 
     min_customer_arrival_time = 0 #0 --> box_nb - 1
     max_customer_arrival_time = 2 #2 --> box_nb + 1
