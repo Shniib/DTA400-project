@@ -5,8 +5,8 @@ SIMULATION_TIME = 480  # 1 unit = 1 minute. 480 = 8 h.
 NUM_CASHIERS = 1
 MAX_INITIAL_CUSTOMERS = 3
 MIN_INITIAL_CUSTOMERS = 1
-MAX_TIME_BETWEEN_CUSTOMERS = 6 # hitta threshold
-MIN_TIME_BETWEEN_CUSTOMERS = 4
+MAX_TIME_BETWEEN_CUSTOMERS = 2 # hitta threshold
+MIN_TIME_BETWEEN_CUSTOMERS = 0
 MAX_SERVICE_TIME = 3
 MIN_SERVICE_TIME = 1
 MAX_DECIDING_TIME = 2
@@ -188,7 +188,7 @@ def time_to_interval_calculation(time_list: list[float]):
 
 def exit_function(bakery: Bakery):
     yield env.timeout(
-        SIMULATION_TIME - 0.00001
+        SIMULATION_TIME - 0.001
     )  # has to be under simulation time or it will not trigger
 
     join_queue_rates = time_to_interval_calculation(arrival_times_to_queue)
@@ -204,23 +204,21 @@ def exit_function(bakery: Bakery):
 
     # arrival rate > service rate --> utilization > 1.      arrival rate < service rate --> utilization < 1
     global utilization
-    utilization = arrival_rate_to_queue_per_hour / service_rate_per_hour
+    utilization = arrival_rate_to_queue_per_min / service_rate_per_min
 
-    # from pp. Does however freak out if the service time interval is too similar to the arrival time interval for customers, or if the utilization >= 1
     global average_wait_time_min
     global average_queue_length_min
 
     try:
-        average_wait_time_min = arrival_rate_to_queue_per_min / (
-            service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min)
-        )
+        average_wait_time_min = abs(arrival_rate_to_queue_per_min / (
+            service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min)))
     except:
         average_wait_time_min = 0
 
     try: 
-        average_queue_length_min = (
+        average_queue_length_min = abs((
             arrival_rate_to_queue_per_min * arrival_rate_to_queue_per_min
-        ) / (service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min))
+        ) / (service_rate_per_min * (service_rate_per_min - arrival_rate_to_queue_per_min)))
     except:
         average_queue_length_min = 0
     

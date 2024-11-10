@@ -24,7 +24,7 @@ if utilization_data:
         temp_u_list = []
         for samples in range(100): # y samples
             temp_u = DTA400Project.utilization_data(interval[0], interval[1])
-            temp_u_list.append(round(temp_u, 2))
+            temp_u_list.append(temp_u)
             importlib.reload(DTA400Project)
         utilization_mean.append(sum(temp_u_list)/len(temp_u_list))
     plt.plot(utilization_mean)
@@ -36,10 +36,10 @@ if utilization_data:
 
 else:
     l_plot = False
+    plot_boarder = 15
 
     min_customer_arrival_time = 0 #0 --> box_nb - 1
     max_customer_arrival_time = 2 #2 --> box_nb + 1
-    plot_boarder = 10
     w_data = []
     l_data = []
     temp_w = []
@@ -49,8 +49,8 @@ else:
             # run the sim using this interval
             w, l = DTA400Project.simulation_data(min_customer_arrival_time, max_customer_arrival_time)
             # save result
-            temp_w.append(round(w, 2))
-            temp_l.append(round(l, 2))
+            temp_w.append(w)
+            temp_l.append(l)
             # needed or the sim does not restart
             importlib.reload(DTA400Project)
         # save sets of data for one box in the boxes lists
@@ -61,25 +61,20 @@ else:
         temp_l = []
         min_customer_arrival_time += 1
         max_customer_arrival_time += 1
-    print(f"W list: {w_data}\n\nL list: {l_data}")
-
-
-    plt.ylim((-plot_boarder),plot_boarder) #set bound to be able to see smaller boxes
-    y_values = range(-plot_boarder, plot_boarder, 1)
-    plt.yticks(y_values)
+    #print(f"W list: {w_data}\n\nL list: {l_data}")
     
-
     if l_plot:
         plt.boxplot(l_data)
         plt.ylabel("Average queue length")  # Titel för y-axeln
-        plt.title("Queue length and customer arrival threshold")
-        plt.ylim((-plot_boarder * (2/3)),plot_boarder * (2/3))
+        plt.title("Customer arrival impact on queue length")
     else:
         plt.boxplot(w_data)
         plt.ylabel("Average wait time (min)")  # Titel för y-axeln
-        plt.title("Wait time and customer arrival threshold")
+        plt.title("Customer arrival impact on wait time")
     x_labels= make_x_label()
     plt.xticks(range(1, box_nb + 1), x_labels)
     plt.grid(axis = 'y')
+    plt.ylim(0,plot_boarder + 1) #set bound to be able to see smaller boxes
+    plt.yticks(range(0, plot_boarder + 1, 1))
 plt.xlabel("Interval between customer arrival (min)")  # Titel för x-axeln
 plt.show()
