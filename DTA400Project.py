@@ -1,20 +1,20 @@
 import simpy
 import random
 
-SIMULATION_TIME = 120  # 1 unit = 1 minute.
+SIMULATION_TIME = 480  # 1 unit = 1 minute. 480 = 8 h.
 NUM_CASHIERS = 1
 MAX_INITIAL_CUSTOMERS = 3
 MIN_INITIAL_CUSTOMERS = 1
-MAX_TIME_BETWEEN_CUSTOMERS = 7 # hitta threshold
-MIN_TIME_BETWEEN_CUSTOMERS = 5
+MAX_TIME_BETWEEN_CUSTOMERS = 3 # hitta threshold
+MIN_TIME_BETWEEN_CUSTOMERS = 1
 MAX_SERVICE_TIME = 3
 MIN_SERVICE_TIME = 1
 MAX_DECIDING_TIME = 2
 MIN_DECIDING_TIME = 1
 MIN_REGULAR_RATE = 1
 MAX_REGULAR_RATE = 5
-MAX_BAKED_GOODS = int(SIMULATION_TIME * (1/MAX_TIME_BETWEEN_CUSTOMERS) * 2)
-MIN_BAKED_GOODS = int(SIMULATION_TIME * (1/MAX_TIME_BETWEEN_CUSTOMERS))
+MAX_BAKED_GOODS = int((SIMULATION_TIME / MAX_TIME_BETWEEN_CUSTOMERS) * 2)
+MIN_BAKED_GOODS = int(SIMULATION_TIME / MAX_TIME_BETWEEN_CUSTOMERS)
 MAX_WANTED_GOODS = 3
 MIN_WANTED_GOODS = 0
 
@@ -69,10 +69,10 @@ class Bakery:
 
 
 class Customer:  # never do timeout in __init__!
-    def __init__(self, env: simpy.Environment, i: int):
+    def __init__(self, env: simpy.Environment, customer_number: int):
         self.env = env
         self.order: list[tuple[str, int]] = []
-        self.customer_number = i
+        self.customer_number = customer_number
 
         regular = random.randint(MIN_REGULAR_RATE, MAX_REGULAR_RATE)
         if regular == MIN_REGULAR_RATE:
@@ -169,7 +169,7 @@ def main(env):
     for i in range(random.randint(MIN_INITIAL_CUSTOMERS, MAX_INITIAL_CUSTOMERS)):
         customer_number = create_customer(bakery.cashier, customer_number)
         # arrival_rates_to_bakery.append(0)
-    print(f"MAIN: MIN_TIME_BETWEEN_CUSTOMERS: {MIN_TIME_BETWEEN_CUSTOMERS}, MAX_TIME_BETWEEN_CUSTOMERS: {MAX_TIME_BETWEEN_CUSTOMERS}")
+    #print(f"MAIN: MIN_TIME_BETWEEN_CUSTOMERS: {MIN_TIME_BETWEEN_CUSTOMERS}, MAX_TIME_BETWEEN_CUSTOMERS: {MAX_TIME_BETWEEN_CUSTOMERS}")
       
     # simulation
     while True:
@@ -208,6 +208,7 @@ def exit_function(bakery: Bakery):
     arrival_rate_to_queue_per_hour = arrival_rate_to_queue_per_min * 60
 
     # arrival rate > service rate --> utilization > 1.      arrival rate < service rate --> utilization < 1
+    global utilization
     utilization = arrival_rate_to_queue_per_hour / service_rate_per_hour
 
     # from pp. Does however freak out if the service time interval is too similar to the arrival time interval for customers, or if the utilization >= 1
@@ -251,7 +252,7 @@ def exit_function(bakery: Bakery):
         sep="\n",
     )
 
-def simulation_data(mini, maxi):
+def start_simulation(mini:int, maxi:int):
     #set customer arrival interval for the simulation
     global MAX_TIME_BETWEEN_CUSTOMERS, MIN_TIME_BETWEEN_CUSTOMERS
     MAX_TIME_BETWEEN_CUSTOMERS = maxi
@@ -261,12 +262,21 @@ def simulation_data(mini, maxi):
     env = simpy.Environment()
     env.process(main(env))
     env.run(until=SIMULATION_TIME)
+
+def simulation_data(mini:int, maxi:int):
+    start_simulation(mini, maxi)
     #return average queue length and wait time
     w = average_wait_time_min
     l = average_queue_length_min
     return w, l
+
+def utilization_data(mini:int, maxi:int):
+    start_simulation(mini, maxi)
+    #global utilization
+    return utilization
     
-#Comment these out if you want to try the plot.py file
+#Comment 3 lines out if you want to try the plot.py file.
+#Uncomment them for trying out the simulation in this file.
 env = simpy.Environment()
 env.process(main(env))  # start function
 env.run(until=SIMULATION_TIME)
